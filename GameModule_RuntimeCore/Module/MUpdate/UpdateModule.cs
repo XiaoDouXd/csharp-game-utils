@@ -1,0 +1,710 @@
+﻿using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using XD.Common.CollectionUtil;
+using XD.Common.Procedure;
+using XD.Common.ScopeUtil;
+
+// ReSharper disable UnusedMember.Global
+// ReSharper disable MemberCanBePrivate.Global
+// ReSharper disable MemberCanBeMadeStatic.Global
+// ReSharper disable EventNeverSubscribedTo.Global
+// ReSharper disable UnusedAutoPropertyAccessor.Global
+// ReSharper disable ArrangeTrailingCommaInMultilineLists
+
+namespace XD.GameModule.Module.MUpdate
+{
+    // ReSharper disable once ClassNeverInstantiated.Global
+    public partial class UpdateModule : EngineModule
+    {
+        public delegate void UpdFunc(float dt, float rdt);
+
+        public sealed class UpdateFuncHandle : IPolling, IDisposableWithFlag
+        {
+            public bool IsDisposed => E.Upd == null || !E.Upd.Contains(this);
+            public void Dispose() => E.Upd?.Unregister(this);
+        }
+
+        private const int CallbackInfoPoolSize = 2048;
+
+        #region Register
+
+        #region 直接事件注册 (适用于更高效的场合)
+        public event UpdFunc? OnUpdateDirect;
+        public event UpdFunc? OnLateUpdateDirect;
+        public event UpdFunc? OnFixedUpdateDirect;
+        #endregion
+
+        /// <summary>
+        /// 对象是否在遍历中
+        /// </summary>
+        /// <param name="polling"></param>
+        /// <returns></returns>
+        public bool Contains(IPolling polling)
+        {
+            if (_unregisterQueue.Contains(polling)) return false;
+            if (_registerQueue.ContainsKey(polling)) return true;
+            lock(_regInfoDict) if (_regInfoDict.ContainsKey(polling)) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// 注销事件对象
+        /// </summary>
+        /// <param name="unregisterHandle"></param>
+        /// <returns></returns>
+        public bool Unregister<T>(T? unregisterHandle) where T : class, IPolling
+        {
+            if (unregisterHandle == null) return false;
+            if (_unregisterQueue.Contains(unregisterHandle)) return false;
+            if (_registerQueue.Remove(unregisterHandle, out var info))
+            {
+                if (info.DisposeCallback != null && unregisterHandle is IXDDisposable xdObj)
+                    xdObj.RemoveOnDispose(info.DisposeCallback);
+                return true;
+            }
+            lock(_regInfoDict) if (!_regInfoDict.ContainsKey(unregisterHandle)) return false;
+            _unregisterQueue.Add(unregisterHandle);
+            return true;
+        }
+
+        /// <summary>
+        /// 注册事件对象
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <param name="isCheckDisposable"></param>
+        /// <returns> unregisterHandle </returns>
+        public T? Register<T>(T? obj, bool isCheckDisposable = true) where T : class, IPolling
+        {
+            if (obj == null || CheckRegisteredObjectAndRemoveUnregisterReq(obj)) return obj;
+            bool ret;
+            if (isCheckDisposable && obj is XDObject xdObj)
+            {
+                var act = (Action)(() => Unregister(obj));
+                var info = new RegInfo(act, obj);
+                ret = RegisterInner(info);
+                if (ret) xdObj.AddOnDispose(act);
+            }
+            else ret = RegisterInner(new RegInfo(null, obj));
+            return ret ? obj : null;
+        }
+
+        /// <summary>
+        /// 延迟调用函数
+        /// </summary>
+        /// <param name="cb"></param>
+        /// <param name="delay"></param>
+        /// <returns></returns>
+        public UpdateFuncHandle? Delay(Action? cb, float delay = 0)
+        {
+            if (cb == null) return null;
+            var obj = new UpdateFuncHandle();
+            var info = new RegInfo(null, obj, (_, _) =>
+            {
+                cb.Invoke();
+                return false;
+            }, RegInfo.RegType.Update, delay, 0, 1);
+            var ret = RegisterInner(info);
+            return ret ? obj : null;
+        }
+
+        /// <summary>
+        ///
+        /// </summary>
+        /// <param name="cb"> 回调 </param>
+        /// <param name="delay"> 延迟触发 </param>
+        /// <param name="interval"> 调用间隔 </param>
+        /// <param name="maxCallCnt"> 最大调用数量(超过时自动注销) </param>
+        /// <returns> 唯一索引对象 </returns>
+        public UpdateFuncHandle? LateUpdate(Action<float /*delta time*/, float /*real delta time*/>? cb, float delay = 0, float interval = 0, long maxCallCnt = 0)
+        {
+            if (cb == null) return null;
+            var obj = new UpdateFuncHandle();
+            var info = new RegInfo(null, obj, (dt, rdt) =>
+            {
+                cb(dt, rdt);
+                return true;
+            }, RegInfo.RegType.LateUpdate, delay, interval, maxCallCnt);
+            var success = RegisterInner(info);
+            return success ? obj : null;
+        }
+
+        /// <summary>
+        ///
+        /// </summary>
+        /// <param name="cb"> 回调 </param>
+        /// <param name="delay"> 延迟触发 </param>
+        /// <param name="interval"> 调用间隔 </param>
+        /// <param name="maxCallCnt"> 最大调用数量(超过时自动注销) </param>
+        /// <returns> 唯一索引对象 </returns>
+        public UpdateFuncHandle? LateUpdate(Func<float /*delta time*/, float /*real delta time*/, bool>? cb, float delay = 0, float interval = 0, long maxCallCnt = 0)
+        {
+            if (cb == null) return null;
+            var obj = new UpdateFuncHandle();
+            var info = new RegInfo(null, obj, cb, RegInfo.RegType.LateUpdate, delay, interval, maxCallCnt);
+            var success = RegisterInner(info);
+            return success ? obj : null;
+        }
+
+        /// <summary>
+        ///
+        /// </summary>
+        /// <param name="cb"> 回调 </param>
+        /// <param name="delay"> 延迟触发 </param>
+        /// <param name="interval"> 调用间隔 </param>
+        /// <param name="maxCallCnt"> 最大调用数量(超过时自动注销) </param>
+        /// <returns> 唯一索引对象 </returns>
+        public UpdateFuncHandle? FixedUpdate(Action<float /*delta time*/, float /*real delta time*/>? cb, float delay = 0, float interval = 0, long maxCallCnt = 0)
+        {
+            if (cb == null) return null;
+            var obj = new UpdateFuncHandle();
+            var info = new RegInfo(null, obj, (dt, rdt) =>
+            {
+                cb(dt, rdt);
+                return true;
+            }, RegInfo.RegType.FixedUpdate, delay, interval, maxCallCnt);
+            var success = RegisterInner(info);
+            return success ? obj : null;
+        }
+
+        /// <summary>
+        ///
+        /// </summary>
+        /// <param name="cb"> 回调 </param>
+        /// <param name="delay"> 延迟触发 </param>
+        /// <param name="interval"> 调用间隔 </param>
+        /// <param name="maxCallCnt"> 最大调用数量(超过时自动注销) </param>
+        /// <returns> 唯一索引对象 </returns>
+        public UpdateFuncHandle? FixedUpdate(Func<float /*delta time*/, float /*real delta time*/, bool>? cb, float delay = 0, float interval = 0, long maxCallCnt = 0)
+        {
+            if (cb == null) return null;
+            var obj = new UpdateFuncHandle();
+            var info = new RegInfo(null, obj, cb, RegInfo.RegType.FixedUpdate, delay, interval, maxCallCnt);
+            var success = RegisterInner(info);
+            return success ? obj : null;
+        }
+
+        /// <summary>
+        ///
+        /// </summary>
+        /// <param name="cb"> 回调 </param>
+        /// <param name="delay"> 延迟触发 </param>
+        /// <param name="interval"> 调用间隔 </param>
+        /// <param name="maxCallCnt"> 最大调用数量(超过时自动注销) </param>
+        /// <returns> 唯一索引对象 </returns>
+        public UpdateFuncHandle? Update(Action<float /*delta time*/, float /*real delta time*/>? cb, float delay = 0, float interval = 0, long maxCallCnt = 0)
+        {
+            if (cb == null) return null;
+            var obj = new UpdateFuncHandle();
+            var info = new RegInfo(null, obj, (dt, rdt) =>
+            {
+                cb(dt, rdt);
+                return true;
+            }, RegInfo.RegType.Update, delay, interval, maxCallCnt);
+            var success = RegisterInner(info);
+            return success ? obj : null;
+        }
+
+        /// <summary>
+        ///
+        /// </summary>
+        /// <param name="cb"> 回调 </param>
+        /// <param name="delay"> 延迟触发 </param>
+        /// <param name="interval"> 调用间隔 </param>
+        /// <param name="maxCallCnt"> 最大调用数量(超过时自动注销) </param>
+        /// <returns> 唯一索引对象 </returns>
+        public UpdateFuncHandle? Update(Func<float /*delta time*/, float /*real delta time*/, bool>? cb, float delay = 0, float interval = 0, long maxCallCnt = 0)
+        {
+            if (cb == null) return null;
+            var obj = new UpdateFuncHandle();
+            var info = new RegInfo(null, obj, cb, RegInfo.RegType.Update, delay, interval, maxCallCnt);
+            var success = RegisterInner(info);
+            return success ? obj : null;
+        }
+
+        private void UnregisterInnerDelay(IPolling? obj)
+        {
+            // ReSharper disable once ConvertIfStatementToSwitchStatement
+            if (obj == null) return;
+
+            RegInfo info;
+            lock (_regInfoDict) if (!_regInfoDict.TryGetValue(obj, out info)) return;
+            var id = info.Id;
+            if (_instUpd.TryGetValue(id, out var instUpd))
+            {
+                Del(instUpd);
+                _instUpd.Remove(id, out _);
+            }
+
+            if (_instFixedUpd.TryGetValue(id, out var instFixedUpd))
+            {
+                Del(instFixedUpd);
+                _instFixedUpd.Remove(id, out _);
+            }
+
+            if (_instLateUpd.TryGetValue(id, out var instLateUpd))
+            {
+                Del(instLateUpd);
+                _instLateUpd.Remove(id, out _);
+            }
+
+            lock (_regInfoDict) _regInfoDict.Remove(obj, out _);
+        }
+
+        private bool CheckRegisteredObjectAndRemoveUnregisterReq(IPolling? obj)
+        {
+            if (obj == null) return true;
+            if (_unregisterQueue.Contains(obj)) _unregisterQueue.Remove(obj);
+            lock(_regInfoDict) if (_regInfoDict.ContainsKey(obj)) return true;
+            return _registerQueue.ContainsKey(obj);
+        }
+
+        private bool RegisterInner(in RegInfo info)
+        {
+            if (info.Source == null ||
+                (info.Act == null &&
+                 info.Update == null &&
+                 info.FixedUpdate == null &&
+                 info.LateUpdate == null)) return false;
+            return _registerQueue.TryAdd(info.Source, info);
+        }
+
+        private void RegisterInnerDelay(in RegInfo info)
+        {
+            if (info.Act != null)
+            {
+                var cbInfo = New();
+                cbInfo.LoadCb(info);
+
+                switch (info.Type)
+                {
+                    case RegInfo.RegType.Update:
+                        _instUpd.TryAdd(info.Id, cbInfo);
+                        break;
+                    case RegInfo.RegType.LateUpdate:
+                        _instLateUpd.TryAdd(info.Id, cbInfo);
+                        break;
+                    case RegInfo.RegType.FixedUpdate:
+                        _instFixedUpd.TryAdd(info.Id, cbInfo);
+                        break;
+                    case RegInfo.RegType.Custom:
+                    default:
+                    {
+                        Del(cbInfo);
+                        return;
+                    }
+                }
+            }
+            else
+            {
+                // ReSharper disable InvertIf
+                if (info.Update != null)
+                {
+                    var cbInfo = New();
+                    cbInfo.LoadCb(info, RegInfo.RegType.Update);
+                    _instUpd.TryAdd(info.Id, cbInfo);
+                }
+
+                if (info.LateUpdate != null)
+                {
+                    var cbInfo = New();
+                    cbInfo.LoadCb(info, RegInfo.RegType.LateUpdate);
+                    _instLateUpd.TryAdd(info.Id, cbInfo);
+                }
+
+                if (info.FixedUpdate != null)
+                {
+                    var cbInfo = New();
+                    cbInfo.LoadCb(info, RegInfo.RegType.FixedUpdate);
+                    _instFixedUpd.TryAdd(info.Id, cbInfo);
+                }
+                // ReSharper restore InvertIf
+            }
+
+            lock(_regInfoDict) _regInfoDict.TryAdd(info.Source!, info);
+        }
+
+        private CbInfo New() => _infoPool.TryPop(out var v) ? v : new CbInfo();
+
+        private void Del(CbInfo info)
+        {
+            info.Clear();
+            if (_infoPool.Count >= CallbackInfoPoolSize) return;
+            _infoPool.Push(info);
+        }
+
+        private readonly HashSet<IPolling> _unregisterQueue = new(CollectionUtil.ReferenceEqualityComparer);
+        private readonly ConcurrentDictionary<IPolling, RegInfo> _registerQueue = new(CollectionUtil.ReferenceEqualityComparer);
+
+        private readonly Dictionary<Guid, CbInfo> _instUpd = new();
+        private readonly Dictionary<Guid, CbInfo> _instLateUpd = new();
+        private readonly Dictionary<Guid, CbInfo> _instFixedUpd = new();
+
+        private readonly Stack<CbInfo> _infoPool = new();
+        private readonly Dictionary<IPolling, RegInfo> _regInfoDict = new(CollectionUtil.ReferenceEqualityComparer);
+
+        private unsafe class CbInfo
+        {
+            // 该业务不需要多播功能, 这里直接使用函数指针, 不用多播委托
+            public delegate*<CbInfo, float> GetDelay { get; private set; } = &CbFloat0;
+            public delegate*<CbInfo, float> GetInterval { get; private set; } = &CbFloat0;
+            public delegate*<CbInfo, long> GetMaxCallCnt { get; private set; } = &CbLong1;
+            public delegate*<CbInfo, float /* dt */, float /* rdt */, bool> Update { get; private set; } = &CbUpdateEmpty;
+
+            public ulong CallCnt { get; set; }
+            public float LastCallDeltaTime { get; set; }
+            public IPolling? Source { get; private set; }
+
+            public void Clear()
+            {
+                CallCnt = 0;
+                LastCallDeltaTime = 0;
+
+                GetDelay = &CbFloat0;
+                GetInterval = &CbFloat0;
+                GetMaxCallCnt = &CbLong1;
+                Update = &CbUpdateEmpty;
+
+                Source = null;
+                _act = null;
+                _actDelay = 0;
+                _actInterval = 0;
+                _actMaxCallCnt = 1;
+                _updateInst = null;
+                _lateUpdateInst = null;
+                _fixedUpdateInst = null;
+            }
+
+            public void LoadCb(in RegInfo info, RegInfo.RegType type = RegInfo.RegType.Custom)
+            {
+                Source = info.Source;
+                if (Source == null) goto Failure;
+                if (info.Type != RegInfo.RegType.Custom)
+                {
+                    if (info.Act == null) goto Failure;
+                    Update = &CbActUpdate;
+                    GetDelay = &CbActDelay;
+                    GetInterval = &CbActInterval;
+                    GetMaxCallCnt = &CbActMaxCnt;
+
+                    _act = info.Act;
+                    _actDelay = info.Delay;
+                    _actInterval = info.Interval;
+                    _actMaxCallCnt = info.MaxCallCnt;
+                }
+                else
+                {
+                    GetDelay = &CbFloat0;
+                    GetMaxCallCnt = &CbLong0;
+
+                    switch (type)
+                    {
+                        case RegInfo.RegType.Update:
+                            if (info.Update == null) goto Failure;
+                            _updateInst = info.Update;
+                            Update = &CbUpdateUpdate;
+                            GetInterval = &CbUpdateInterval;
+                            break;
+                        case RegInfo.RegType.LateUpdate:
+                            if (info.LateUpdate == null) goto Failure;
+                            _lateUpdateInst = info.LateUpdate;
+                            Update = &CbLateUpdateUpdate;
+                            GetInterval = &CbLateUpdateInterval;
+                            break;
+                        case RegInfo.RegType.FixedUpdate:
+                            if (info.FixedUpdate == null) goto Failure;
+                            _fixedUpdateInst = info.FixedUpdate;
+                            Update = &CbFixedUpdateUpdate;
+                            GetInterval = &CbFixedUpdateInterval;
+                            break;
+                        case RegInfo.RegType.Custom:
+                        default: goto Failure;
+                    }
+                }
+
+                return;
+                Failure:
+                Update = &CbUpdateEmpty;
+                GetDelay = &CbFloat0;
+                GetInterval = &CbFloat0;
+                GetMaxCallCnt = &CbLong1;
+            }
+
+            private IUpdate? _updateInst;
+            private ILateUpdate? _lateUpdateInst;
+            private IFixedUpdate? _fixedUpdateInst;
+
+            private long _actMaxCallCnt;
+            private float _actDelay;
+            private float _actInterval;
+            private Func<float, float, bool>? _act;
+
+            #region Cb
+
+            private static long CbLong0(CbInfo _) => 0;
+            private static long CbLong1(CbInfo _) => 1;
+            private static float CbFloat0(CbInfo _) => 0f;
+            private static bool CbUpdateEmpty(CbInfo _, float __, float ___) => false;
+
+            private static float CbActInterval(CbInfo self) => self._actInterval;
+            private static float CbUpdateInterval(CbInfo self) => self._updateInst!.UpdateInterval;
+            private static float CbLateUpdateInterval(CbInfo self) => self._lateUpdateInst!.LateUpdateInterval;
+            private static float CbFixedUpdateInterval(CbInfo self) => self._fixedUpdateInst!.FixedUpdateInterval;
+
+            private static float CbActDelay(CbInfo self) => self._actDelay;
+            private static long CbActMaxCnt(CbInfo self) => self._actMaxCallCnt;
+
+            private static bool CbActUpdate(CbInfo self, float dt, float rdt) => self._act!(dt, rdt);
+            private static bool CbUpdateUpdate(CbInfo self, float dt, float rdt)
+            {
+                self._updateInst!.OnUpdate(dt, rdt);
+                return true;
+            }
+
+            private static bool CbLateUpdateUpdate(CbInfo self, float dt, float rdt)
+            {
+                self._lateUpdateInst!.OnLateUpdate(dt, rdt);
+                return true;
+            }
+
+            private static bool CbFixedUpdateUpdate(CbInfo self, float dt, float rdt)
+            {
+                self._fixedUpdateInst!.OnFixedUpdate(dt, rdt);
+                return true;
+            }
+
+            #endregion
+        }
+
+        private readonly struct RegInfo
+        {
+            public enum RegType : byte
+            {
+                // ReSharper disable once PreferConcreteValueOverDefault
+                Custom = default,   // 接口类型
+                Update,             // Update 回调
+                LateUpdate,         // LateUpdate 回调
+                FixedUpdate         // FixedUpdate 回调
+            }
+
+            public Guid Id { get; }
+
+            #region Interface
+
+            public IPolling? Source { get; }
+            public Action? DisposeCallback { get; }
+            public IUpdate? Update { get; }
+            public ILateUpdate? LateUpdate { get; }
+            public IFixedUpdate? FixedUpdate { get; }
+
+            #endregion
+
+            #region Act
+
+            public RegType Type { get; }
+            public float Delay { get; }
+            public float Interval { get; }
+            public long MaxCallCnt { get; }
+            public Func<float, float, bool>? Act { get; }
+
+            #endregion
+
+            public RegInfo(Action? disposeCb, IPolling src, Func<float, float, bool>? act, RegType type, float delay, float interval, long maxCallCnt)
+            {
+                Id = Guid.NewGuid();
+
+                Act = act;
+                Type = type;
+                Source = src;
+                Delay = delay;
+                Update = null;
+                LateUpdate = null;
+                FixedUpdate = null;
+                Interval = interval;
+                MaxCallCnt = maxCallCnt;
+                DisposeCallback = disposeCb;
+            }
+
+            public RegInfo(Action? disposeCallback, IPolling? source)
+            {
+                Id = Guid.NewGuid();
+
+                Act = null;
+                Source = source;
+                Update = null;
+                LateUpdate = null;
+                FixedUpdate = null;
+                Type = RegType.Custom;
+                MaxCallCnt = 0;
+                Interval = 0;
+                Delay = 0;
+                DisposeCallback = disposeCallback;
+
+                if (Source == null) return;
+                Update = Source as IUpdate;
+                FixedUpdate = Source as IFixedUpdate;
+                LateUpdate = Source as ILateUpdate;
+            }
+        }
+
+        #endregion
+
+        #region Driver
+
+        private unsafe void OnUpdate(float dt, float rdt)
+        {
+            CheckRegister();
+            CheckUnregister();
+
+            // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
+            foreach (var info in _instUpd.Values)
+            {
+                if ((info.CallCnt <= 0 && info.GetDelay(info) > info.LastCallDeltaTime) ||
+                    info.GetInterval(info) > info.LastCallDeltaTime)
+                {
+                    info.LastCallDeltaTime += dt;
+                    continue;
+                }
+
+                var ret = info.Update(info, dt, rdt);
+                if (info.CallCnt == ulong.MaxValue) info.CallCnt = 1;
+                else info.CallCnt++;
+                info.LastCallDeltaTime = 0;
+
+                var maxCallCnt = info.GetMaxCallCnt(info);
+                if (!ret || (maxCallCnt > 0 && info.CallCnt >= (ulong)maxCallCnt)) Unregister(info.Source);
+            }
+            OnUpdateDirect?.Invoke(dt, rdt);
+        }
+
+        private unsafe void OnFixedUpdate(float dt, float rdt)
+        {
+            CheckRegister();
+            CheckUnregister();
+
+            // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
+            foreach (var info in _instFixedUpd.Values)
+            {
+                if ((info.CallCnt <= 0 && info.GetDelay(info) > info.LastCallDeltaTime) ||
+                    info.GetInterval(info) > info.LastCallDeltaTime)
+                {
+                    info.LastCallDeltaTime += dt;
+                    continue;
+                }
+
+                var ret = info.Update(info, dt, rdt);
+                if (info.CallCnt == ulong.MaxValue) info.CallCnt = 1;
+                else info.CallCnt++;
+                info.LastCallDeltaTime = 0;
+
+                var maxCallCnt = info.GetMaxCallCnt(info);
+                if (!ret || (maxCallCnt > 0 && info.CallCnt >= (ulong)maxCallCnt)) Unregister(info.Source);
+            }
+            OnFixedUpdateDirect?.Invoke(dt, rdt);
+        }
+
+        private unsafe void OnLateUpdate(float dt, float rdt)
+        {
+            CheckRegister();
+            CheckUnregister();
+
+            // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
+            foreach (var info in _instLateUpd.Values)
+            {
+                if ((info.CallCnt <= 0 && info.GetDelay(info) > info.LastCallDeltaTime) ||
+                    info.GetInterval(info) > info.LastCallDeltaTime)
+                {
+                    info.LastCallDeltaTime += dt;
+                    continue;
+                }
+
+                var ret = info.Update(info, dt, rdt);
+                if (info.CallCnt == ulong.MaxValue) info.CallCnt = 1;
+                else info.CallCnt++;
+                info.LastCallDeltaTime = 0;
+
+                var maxCallCnt = info.GetMaxCallCnt(info);
+                if (!ret || (maxCallCnt > 0 && info.CallCnt >= (ulong)maxCallCnt)) Unregister(info.Source);
+            }
+            OnLateUpdateDirect?.Invoke(dt, rdt);
+        }
+
+        private void CheckUnregister()
+        {
+            if (_unregisterQueue.Count <= 0) return;
+            foreach (var obj in _unregisterQueue)
+                UnregisterInnerDelay(obj);
+            _unregisterQueue.Clear();
+        }
+
+        private void CheckRegister()
+        {
+            if (_registerQueue.Count <= 0) return;
+            foreach (var info in _registerQueue.Values)
+                RegisterInnerDelay(info);
+            _registerQueue.Clear();
+        }
+
+        #endregion
+
+        #region Lifecycle
+
+        internal override IProcedure DeInitProcedure() => _deinitProcedure ??= new ProcedureSync(DeInit);
+        internal override IProcedure InitProcedure() => _initProcedure ??= new ProcedureSync(Init);
+        internal override IProcedure ReinitProcedure() => _reinitProcedure ??= new ProcedureSync(Reinit);
+
+        private IProcedure.RetInfo Init()
+        {
+            _registerQueue.Clear();
+            _unregisterQueue.Clear();
+
+            _instUpd.Clear();
+            _instLateUpd.Clear();
+            _instFixedUpd.Clear();
+            lock (_regInfoDict) _regInfoDict.Clear();
+
+            E.Tick += OnUpdate;
+            E.LateTick += OnLateUpdate;
+            E.PhysicalTick += OnFixedUpdate;
+
+            OnUpdateDirect += _coroutineInterface.Update;
+            OnLateUpdateDirect += _coroutineInterface.LateUpdate;
+            OnFixedUpdateDirect += _coroutineInterface.FixedUpdate;
+            return IProcedure.RetInfo.Success;
+        }
+
+        private IProcedure.RetInfo Reinit()
+        {
+            _registerQueue.Clear();
+            _unregisterQueue.Clear();
+
+            _instUpd.Clear();
+            _instLateUpd.Clear();
+            _instFixedUpd.Clear();
+            lock (_regInfoDict) _regInfoDict.Clear();
+
+            E.Tick -= OnUpdate;
+            E.LateTick -= OnLateUpdate;
+            E.PhysicalTick -= OnFixedUpdate;
+            E.Tick += OnUpdate;
+            E.LateTick += OnLateUpdate;
+            E.PhysicalTick += OnFixedUpdate;
+
+            return IProcedure.RetInfo.Success;
+        }
+
+        private IProcedure.RetInfo DeInit()
+        {
+            E.Tick -= OnUpdate;
+            E.LateTick -= OnLateUpdate;
+            E.PhysicalTick -= OnFixedUpdate;
+            return IProcedure.RetInfo.Success;
+        }
+
+        private IProcedure? _initProcedure;
+        private IProcedure? _reinitProcedure;
+        private IProcedure? _deinitProcedure;
+
+        #endregion
+    }
+}
