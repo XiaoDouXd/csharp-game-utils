@@ -3,49 +3,49 @@
     /// <summary> 可轮询对象 </summary>
     public interface IPolling {}
 
-    public interface IUpdate : IPolling
+    public interface ITick : IPolling
     {
         /// <summary>
         /// 刷新间隙
         /// </summary>
-        public float UpdateInterval => 0;
+        public float TickInterval => 0;
 
         /// <summary>
         /// 刷新一帧
         /// </summary>
         /// <param name="dt"> 游戏时间增量 </param>
         /// <param name="rdt"> 现实时间增量 </param>
-        public void OnUpdate(float dt, float rdt);
+        public void OnTick(float dt, float rdt);
     }
 
-    public interface IFixedUpdate : IPolling
+    public interface IPhysicalTicker : IPolling
     {
         /// <summary>
         /// 刷新间隙
         /// </summary>
-        public float FixedUpdateInterval => 0;
+        public float PhysicalTickInterval => 0;
 
         /// <summary>
         /// 在 FixedUpdate 里刷新一帧
         /// </summary>
         /// <param name="dt"> 游戏时间增量 </param>
         /// <param name="rdt"> 现实时间增量 </param>
-        public void OnFixedUpdate(float dt, float rdt);
+        public void OnPhysicalTick(float dt, float rdt);
     }
 
-    public interface ILateUpdate : IPolling
+    public interface ILateTicker : IPolling
     {
         /// <summary>
         /// 刷新间隙
         /// </summary>
-        public float LateUpdateInterval => 0;
+        public float LateTickInterval => 0;
 
         /// <summary>
         /// 在 LateUpdate 里刷新一帧
         /// </summary>
         /// <param name="dt"> 游戏时间增量 </param>
         /// <param name="rdt"> 现实时间增量 </param>
-        public void OnLateUpdate(float dt, float rdt);
+        public void OnLateTick(float dt, float rdt);
     }
 
     public interface IInit

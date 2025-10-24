@@ -1,6 +1,4 @@
-﻿#nullable enable
-
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -65,7 +63,7 @@ namespace XD.GameModule.Module.MEvent
             _frameDelayQueue.Enqueue(new EventTaskInfo(null, paramList));
         }
 
-        private void OnUpdate(float _, float __)
+        private void OnTick(float _, float __)
         {
             FrameDelay();
             FrameAsync();

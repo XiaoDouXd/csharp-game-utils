@@ -169,7 +169,7 @@ namespace XD.GameModule.Module.MConfig
                 {
                     globalLoader = Task.Run(async () =>
                     {
-                        await E.Upd?.Register(new UpdateTask())!;
+                        await E.Tick?.Register(new TickTask())!;
                         using var h = CfgUtil.GlobalTableReadFunction();
                         return h != null
                             ? MessagePackSerializer.Deserialize<CfgUtil.GlobalTableCreateResult>(await h)

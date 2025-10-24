@@ -1,6 +1,8 @@
 ﻿using System;
 using XD.Common.AsyncUtil;
 
+// ReSharper disable UnusedAutoPropertyAccessor.Global
+
 namespace XD.GameModule.Module.MAsset
 {
     public interface IAssetTask<out T> : IAwaiter<T>

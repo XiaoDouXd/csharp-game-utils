@@ -1,7 +1,4 @@
-﻿
-#nullable enable
-
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using XD.Common.ScopeUtil;
@@ -12,10 +9,10 @@ using XD.Common.ScopeUtil;
 namespace XD.Common.Procedure
 {
     /// <summary>
-    /// 串行程序流轮询执行器 (依靠 Unity update 轮询执行, 不开线程)
+    /// 并行程序流轮询执行器 (依靠 Unity update 轮询执行每一个程序流)
     /// </summary>
     // ReSharper disable once InconsistentNaming
-    public class ProcedureSerialActuator_Upd : IProcedure, IList<IProcedure?>, IReadOnlyList<IProcedure?>, IUpdate
+    public class ProcedureParallelActuator_Tick : IProcedure, IList<IProcedure?>, IReadOnlyList<IProcedure?>, ITick
     {
         public IProcedure? this[int index]
         {
@@ -31,7 +28,7 @@ namespace XD.Common.Procedure
 
                 _procedures[index] = new ProcedureInfo
                 {
-                    NextIndex = index,
+                    IsRunning = false,
                     Item = value
                 };
             }
@@ -65,34 +62,31 @@ namespace XD.Common.Procedure
         {
             if (!CheckLock(false)) return;
             if (_procedures.Count <= 0) return;
-            _curWaitingInfo = null;
 
-            var lastIdxInner = -1;
             for (var i = _procedures.Count - 1; i >= 0; i--)
             {
                 var info = _procedures[i];
                 var item = info.Item;
 
                 if (item == null) continue;
-                item.OnEnd -= lastIdxInner < 0 ? DoEnd : DoNext;
-
-                info.NextIndex = lastIdxInner;
-                lastIdxInner = i;
+                item.OnEnd -= DoEnd;
+                if (info.IsRunning) item.Abort();
+                info.IsRunning = false;
             }
 
-            _curRunningInfo?.Item?.Abort();
-            _curRunningInfo = null;
-
+            _curCompletedCnt = _curRunningCnt = 0;
             Running = false;
         }
 
         public IProcedure.RetInfo Init() => IProcedure.RetInfo.Success;
 
-        public void OnUpdate(float dt, float rdt)
+        public void OnTick(float dt, float rdt)
         {
-            if (_curWaitingInfo == null) return;
-            _curWaitingInfo?.Item?.Do();
-            _curWaitingInfo = null;
+            if (!Running) return;
+            if (_curRunningCnt <= 0 || _curCompletedCnt < _curRunningCnt) return;
+            OnEnd?.Invoke(this, IProcedure.EndType.Success, null);
+            _curCompletedCnt = _curRunningCnt = 0;
+            Running = false;
         }
 
         public void Do()
@@ -102,7 +96,6 @@ namespace XD.Common.Procedure
                 if (CheckLock()) return;
                 Running = true;
             }
-
             if (_procedures.Count <= 0)
             {
                 OnEnd?.Invoke(this, IProcedure.EndType.Success, null);
@@ -110,10 +103,11 @@ namespace XD.Common.Procedure
             }
 
             // 装载事件
-            var nextIndex = -1;
+            var runCnt = _curCompletedCnt = _curRunningCnt = 0;
             for (var i = _procedures.Count - 1; i >= 0; i--)
             {
                 var info = _procedures[i];
+                info.IsRunning = false;
                 var item = info.Item;
 
                 if (item == null) continue;
@@ -131,33 +125,38 @@ namespace XD.Common.Procedure
                     default: break;
                 }
 
-                item.OnEnd += nextIndex < 0 ? DoEnd : DoNext;
-
-                info.NextIndex = nextIndex;
-                nextIndex = i;
+                runCnt++;
+                info.IsRunning = true;
+                item.OnEnd += DoEnd;
             }
 
-            if (nextIndex < 0)
+            if (runCnt <= 0)
             {
                 DoEnd(this, IProcedure.EndType.Abort, new ArgumentException("no procedure can run"));
                 return;
             }
-            DoInner(nextIndex);
+
+            _curCompletedCnt = 0;
+            _curRunningCnt = runCnt;
+            // ReSharper disable once ForCanBeConvertedToForeach
+            for (var i = 0; i < _procedures.Count; i++)
+            {
+                var info = _procedures[i];
+                var item = info.Item;
+                if (item == null || !info.IsRunning) continue;
+                item.Do();
+            }
         }
 
-        public void Add(IProcedure? procedure)
+        public void Add(IProcedure? item) => Add(item, string.Empty);
+        public void Add(IProcedure? procedure, string name)
         {
             if (CheckLock()) return;
-            if (Contains(procedure) && procedure != null)
-            {
-                Log.Log.Error("can't set same procedure into the actuator");
-                return;
-            }
-
+            if (Contains(procedure) && procedure != null) return;
             _procedures.Add(new ProcedureInfo
             {
                 Item = procedure,
-                NextIndex = _procedures.Count
+                IsRunning = false
             });
         }
 
@@ -208,7 +207,7 @@ namespace XD.Common.Procedure
             _procedures.Insert(index, new ProcedureInfo
             {
                 Item = item,
-                NextIndex = index
+                IsRunning = false
             });
         }
 
@@ -228,66 +227,43 @@ namespace XD.Common.Procedure
 
         #region Do Procedures
 
-        private void DoNext(IProcedure _, IProcedure.EndType type, Exception? exception)
+        private void DoEnd(IProcedure? procedure, IProcedure.EndType type, Exception? exception)
         {
-            if (_curRunningInfo == null)
+            lock (_procedures)
             {
-                DoEnd(this, IProcedure.EndType.Abort, new ArgumentNullException(nameof(_curRunningInfo), "invalid procedure data"));
-                return;
-            }
-
-            switch (type)
-            {
-                case IProcedure.EndType.Abort:
-                    DoEnd(this, IProcedure.EndType.Abort, exception);
-                    return;
-                case IProcedure.EndType.Warning:
+                if (ReferenceEquals(this, procedure))
                 {
-                    if (exception != null) Log.Log.Warning(exception);
-                    break;
+                    for (var i = _procedures.Count - 1; i >= 0; i--)
+                    {
+                        var info = _procedures[i];
+                        var item = info.Item;
+
+                        if (item == null) continue;
+                        item.OnEnd -= DoEnd;
+                        if (info.IsRunning) item.Abort();
+                        info.IsRunning = false;
+                    }
+
+                    _curCompletedCnt = _curRunningCnt = 0;
+                    Running = false;
                 }
-                case IProcedure.EndType.Success:
-                default: break;
+                else
+                {
+                    var idx = IndexOf(procedure);
+                    if (idx < 0) return;
+
+                    var info = _procedures[idx];
+                    if (info.Item == null) return;
+
+                    info.Item.OnEnd -= OnEnd;
+                    _curCompletedCnt++;
+                }
             }
-
-            DoInner(_curRunningInfo.NextIndex);
-        }
-
-        private void DoInner(int idx)
-        {
-            var item = _procedures[idx];
-            if (item.Item == null)
-            {
-                DoEnd(this, IProcedure.EndType.Abort, new ArgumentOutOfRangeException(nameof(idx), "invalid procedure data"));
-                return;
-            }
-            _curWaitingInfo = _curRunningInfo = item;
-        }
-
-        private void DoEnd(IProcedure _, IProcedure.EndType type, Exception? exception)
-        {
-            // 卸载事件
-            var lastIdxInner = -1;
-            for (var i = _procedures.Count - 1; i >= 0; i--)
-            {
-                var info = _procedures[i];
-                var item = info.Item;
-
-                if (item == null) continue;
-                item.OnEnd -= lastIdxInner < 0 ? DoEnd : DoNext;
-
-                info.NextIndex = lastIdxInner;
-                lastIdxInner = i;
-            }
-
-            _curRunningInfo = null;
-            OnEnd?.Invoke(this, type, exception);
-            Running = false;
         }
 
         private bool CheckLock(bool log = true)
         {
-            if (!Running && _curRunningInfo == null && _curWaitingInfo == null)
+            if (!Running)
                 return false;
             if (log) Log.Log.Warning("try to modify locked procedure");
             return true;
@@ -295,13 +271,13 @@ namespace XD.Common.Procedure
 
         #endregion
 
-        private ProcedureInfo? _curWaitingInfo;
-        private ProcedureInfo? _curRunningInfo;
+        private int _curRunningCnt;
+        private int _curCompletedCnt;
         private readonly List<ProcedureInfo> _procedures = new();
 
         private class ProcedureInfo
         {
-            public int NextIndex;
+            public bool IsRunning;
             public IProcedure? Item;
         }
     }

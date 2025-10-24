@@ -1,11 +1,8 @@
-﻿#nullable enable
-
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using XD.Common;
 using XD.Common.ScopeUtil;
-using E = XD.GameModule.Module.E;
 
 // ReSharper disable UnusedMember.Global
 // ReSharper disable MemberCanBePrivate.Local

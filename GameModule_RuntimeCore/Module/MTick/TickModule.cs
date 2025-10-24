@@ -12,17 +12,17 @@ using XD.Common.ScopeUtil;
 // ReSharper disable UnusedAutoPropertyAccessor.Global
 // ReSharper disable ArrangeTrailingCommaInMultilineLists
 
-namespace XD.GameModule.Module.MUpdate
+namespace XD.GameModule.Module.MTick
 {
     // ReSharper disable once ClassNeverInstantiated.Global
-    public partial class UpdateModule : EngineModule
+    public partial class TickModule : EngineModule
     {
-        public delegate void UpdFunc(float dt, float rdt);
+        public delegate void TickFunc(float dt, float rdt);
 
-        public sealed class UpdateFuncHandle : IPolling, IDisposableWithFlag
+        public sealed class TickFuncHandle : IPolling, IDisposableWithFlag
         {
-            public bool IsDisposed => E.Upd == null || !E.Upd.Contains(this);
-            public void Dispose() => E.Upd?.Unregister(this);
+            public bool IsDisposed => E.Tick == null || !E.Tick.Contains(this);
+            public void Dispose() => E.Tick?.Unregister(this);
         }
 
         private const int CallbackInfoPoolSize = 2048;
@@ -30,9 +30,9 @@ namespace XD.GameModule.Module.MUpdate
         #region Register
 
         #region 直接事件注册 (适用于更高效的场合)
-        public event UpdFunc? OnUpdateDirect;
-        public event UpdFunc? OnLateUpdateDirect;
-        public event UpdFunc? OnFixedUpdateDirect;
+        public event TickFunc? OnTickDirect;
+        public event TickFunc? OnLateTickDirect;
+        public event TickFunc? OnPhysicalTickDirect;
         #endregion
 
         /// <summary>
@@ -95,15 +95,15 @@ namespace XD.GameModule.Module.MUpdate
         /// <param name="cb"></param>
         /// <param name="delay"></param>
         /// <returns></returns>
-        public UpdateFuncHandle? Delay(Action? cb, float delay = 0)
+        public TickFuncHandle? Delay(Action? cb, float delay = 0)
         {
             if (cb == null) return null;
-            var obj = new UpdateFuncHandle();
+            var obj = new TickFuncHandle();
             var info = new RegInfo(null, obj, (_, _) =>
             {
                 cb.Invoke();
                 return false;
-            }, RegInfo.RegType.Update, delay, 0, 1);
+            }, RegInfo.RegType.Tick, delay, 0, 1);
             var ret = RegisterInner(info);
             return ret ? obj : null;
         }
@@ -116,15 +116,15 @@ namespace XD.GameModule.Module.MUpdate
         /// <param name="interval"> 调用间隔 </param>
         /// <param name="maxCallCnt"> 最大调用数量(超过时自动注销) </param>
         /// <returns> 唯一索引对象 </returns>
-        public UpdateFuncHandle? LateUpdate(Action<float /*delta time*/, float /*real delta time*/>? cb, float delay = 0, float interval = 0, long maxCallCnt = 0)
+        public TickFuncHandle? LateTick(Action<float /*delta time*/, float /*real delta time*/>? cb, float delay = 0, float interval = 0, long maxCallCnt = 0)
         {
             if (cb == null) return null;
-            var obj = new UpdateFuncHandle();
+            var obj = new TickFuncHandle();
             var info = new RegInfo(null, obj, (dt, rdt) =>
             {
                 cb(dt, rdt);
                 return true;
-            }, RegInfo.RegType.LateUpdate, delay, interval, maxCallCnt);
+            }, RegInfo.RegType.LateTick, delay, interval, maxCallCnt);
             var success = RegisterInner(info);
             return success ? obj : null;
         }
@@ -137,11 +137,11 @@ namespace XD.GameModule.Module.MUpdate
         /// <param name="interval"> 调用间隔 </param>
         /// <param name="maxCallCnt"> 最大调用数量(超过时自动注销) </param>
         /// <returns> 唯一索引对象 </returns>
-        public UpdateFuncHandle? LateUpdate(Func<float /*delta time*/, float /*real delta time*/, bool>? cb, float delay = 0, float interval = 0, long maxCallCnt = 0)
+        public TickFuncHandle? LateTick(Func<float /*delta time*/, float /*real delta time*/, bool>? cb, float delay = 0, float interval = 0, long maxCallCnt = 0)
         {
             if (cb == null) return null;
-            var obj = new UpdateFuncHandle();
-            var info = new RegInfo(null, obj, cb, RegInfo.RegType.LateUpdate, delay, interval, maxCallCnt);
+            var obj = new TickFuncHandle();
+            var info = new RegInfo(null, obj, cb, RegInfo.RegType.LateTick, delay, interval, maxCallCnt);
             var success = RegisterInner(info);
             return success ? obj : null;
         }
@@ -154,15 +154,15 @@ namespace XD.GameModule.Module.MUpdate
         /// <param name="interval"> 调用间隔 </param>
         /// <param name="maxCallCnt"> 最大调用数量(超过时自动注销) </param>
         /// <returns> 唯一索引对象 </returns>
-        public UpdateFuncHandle? FixedUpdate(Action<float /*delta time*/, float /*real delta time*/>? cb, float delay = 0, float interval = 0, long maxCallCnt = 0)
+        public TickFuncHandle? PhysicalTick(Action<float /*delta time*/, float /*real delta time*/>? cb, float delay = 0, float interval = 0, long maxCallCnt = 0)
         {
             if (cb == null) return null;
-            var obj = new UpdateFuncHandle();
+            var obj = new TickFuncHandle();
             var info = new RegInfo(null, obj, (dt, rdt) =>
             {
                 cb(dt, rdt);
                 return true;
-            }, RegInfo.RegType.FixedUpdate, delay, interval, maxCallCnt);
+            }, RegInfo.RegType.PhysicalTick, delay, interval, maxCallCnt);
             var success = RegisterInner(info);
             return success ? obj : null;
         }
@@ -175,11 +175,11 @@ namespace XD.GameModule.Module.MUpdate
         /// <param name="interval"> 调用间隔 </param>
         /// <param name="maxCallCnt"> 最大调用数量(超过时自动注销) </param>
         /// <returns> 唯一索引对象 </returns>
-        public UpdateFuncHandle? FixedUpdate(Func<float /*delta time*/, float /*real delta time*/, bool>? cb, float delay = 0, float interval = 0, long maxCallCnt = 0)
+        public TickFuncHandle? PhysicalTick(Func<float /*delta time*/, float /*real delta time*/, bool>? cb, float delay = 0, float interval = 0, long maxCallCnt = 0)
         {
             if (cb == null) return null;
-            var obj = new UpdateFuncHandle();
-            var info = new RegInfo(null, obj, cb, RegInfo.RegType.FixedUpdate, delay, interval, maxCallCnt);
+            var obj = new TickFuncHandle();
+            var info = new RegInfo(null, obj, cb, RegInfo.RegType.PhysicalTick, delay, interval, maxCallCnt);
             var success = RegisterInner(info);
             return success ? obj : null;
         }
@@ -192,15 +192,15 @@ namespace XD.GameModule.Module.MUpdate
         /// <param name="interval"> 调用间隔 </param>
         /// <param name="maxCallCnt"> 最大调用数量(超过时自动注销) </param>
         /// <returns> 唯一索引对象 </returns>
-        public UpdateFuncHandle? Update(Action<float /*delta time*/, float /*real delta time*/>? cb, float delay = 0, float interval = 0, long maxCallCnt = 0)
+        public TickFuncHandle? Tick(Action<float /*delta time*/, float /*real delta time*/>? cb, float delay = 0, float interval = 0, long maxCallCnt = 0)
         {
             if (cb == null) return null;
-            var obj = new UpdateFuncHandle();
+            var obj = new TickFuncHandle();
             var info = new RegInfo(null, obj, (dt, rdt) =>
             {
                 cb(dt, rdt);
                 return true;
-            }, RegInfo.RegType.Update, delay, interval, maxCallCnt);
+            }, RegInfo.RegType.Tick, delay, interval, maxCallCnt);
             var success = RegisterInner(info);
             return success ? obj : null;
         }
@@ -213,11 +213,11 @@ namespace XD.GameModule.Module.MUpdate
         /// <param name="interval"> 调用间隔 </param>
         /// <param name="maxCallCnt"> 最大调用数量(超过时自动注销) </param>
         /// <returns> 唯一索引对象 </returns>
-        public UpdateFuncHandle? Update(Func<float /*delta time*/, float /*real delta time*/, bool>? cb, float delay = 0, float interval = 0, long maxCallCnt = 0)
+        public TickFuncHandle? Tick(Func<float /*delta time*/, float /*real delta time*/, bool>? cb, float delay = 0, float interval = 0, long maxCallCnt = 0)
         {
             if (cb == null) return null;
-            var obj = new UpdateFuncHandle();
-            var info = new RegInfo(null, obj, cb, RegInfo.RegType.Update, delay, interval, maxCallCnt);
+            var obj = new TickFuncHandle();
+            var info = new RegInfo(null, obj, cb, RegInfo.RegType.Tick, delay, interval, maxCallCnt);
             var success = RegisterInner(info);
             return success ? obj : null;
         }
@@ -263,9 +263,9 @@ namespace XD.GameModule.Module.MUpdate
         {
             if (info.Source == null ||
                 (info.Act == null &&
-                 info.Update == null &&
-                 info.FixedUpdate == null &&
-                 info.LateUpdate == null)) return false;
+                 info.Tick == null &&
+                 info.PhysicalTick == null &&
+                 info.LateTick == null)) return false;
             return _registerQueue.TryAdd(info.Source, info);
         }
 
@@ -278,13 +278,13 @@ namespace XD.GameModule.Module.MUpdate
 
                 switch (info.Type)
                 {
-                    case RegInfo.RegType.Update:
+                    case RegInfo.RegType.Tick:
                         _instUpd.TryAdd(info.Id, cbInfo);
                         break;
-                    case RegInfo.RegType.LateUpdate:
+                    case RegInfo.RegType.LateTick:
                         _instLateUpd.TryAdd(info.Id, cbInfo);
                         break;
-                    case RegInfo.RegType.FixedUpdate:
+                    case RegInfo.RegType.PhysicalTick:
                         _instFixedUpd.TryAdd(info.Id, cbInfo);
                         break;
                     case RegInfo.RegType.Custom:
@@ -298,24 +298,24 @@ namespace XD.GameModule.Module.MUpdate
             else
             {
                 // ReSharper disable InvertIf
-                if (info.Update != null)
+                if (info.Tick != null)
                 {
                     var cbInfo = New();
-                    cbInfo.LoadCb(info, RegInfo.RegType.Update);
+                    cbInfo.LoadCb(info, RegInfo.RegType.Tick);
                     _instUpd.TryAdd(info.Id, cbInfo);
                 }
 
-                if (info.LateUpdate != null)
+                if (info.LateTick != null)
                 {
                     var cbInfo = New();
-                    cbInfo.LoadCb(info, RegInfo.RegType.LateUpdate);
+                    cbInfo.LoadCb(info, RegInfo.RegType.LateTick);
                     _instLateUpd.TryAdd(info.Id, cbInfo);
                 }
 
-                if (info.FixedUpdate != null)
+                if (info.PhysicalTick != null)
                 {
                     var cbInfo = New();
-                    cbInfo.LoadCb(info, RegInfo.RegType.FixedUpdate);
+                    cbInfo.LoadCb(info, RegInfo.RegType.PhysicalTick);
                     _instFixedUpd.TryAdd(info.Id, cbInfo);
                 }
                 // ReSharper restore InvertIf
@@ -349,7 +349,7 @@ namespace XD.GameModule.Module.MUpdate
             public delegate*<CbInfo, float> GetDelay { get; private set; } = &CbFloat0;
             public delegate*<CbInfo, float> GetInterval { get; private set; } = &CbFloat0;
             public delegate*<CbInfo, long> GetMaxCallCnt { get; private set; } = &CbLong1;
-            public delegate*<CbInfo, float /* dt */, float /* rdt */, bool> Update { get; private set; } = &CbUpdateEmpty;
+            public delegate*<CbInfo, float /* dt */, float /* rdt */, bool> Tick { get; private set; } = &CbTickEmpty;
 
             public ulong CallCnt { get; set; }
             public float LastCallDeltaTime { get; set; }
@@ -363,16 +363,16 @@ namespace XD.GameModule.Module.MUpdate
                 GetDelay = &CbFloat0;
                 GetInterval = &CbFloat0;
                 GetMaxCallCnt = &CbLong1;
-                Update = &CbUpdateEmpty;
+                Tick = &CbTickEmpty;
 
                 Source = null;
                 _act = null;
                 _actDelay = 0;
                 _actInterval = 0;
                 _actMaxCallCnt = 1;
-                _updateInst = null;
-                _lateUpdateInst = null;
-                _fixedUpdateInst = null;
+                _tickInst = null;
+                _lateTickInst = null;
+                _physicalTickInst = null;
             }
 
             public void LoadCb(in RegInfo info, RegInfo.RegType type = RegInfo.RegType.Custom)
@@ -382,7 +382,7 @@ namespace XD.GameModule.Module.MUpdate
                 if (info.Type != RegInfo.RegType.Custom)
                 {
                     if (info.Act == null) goto Failure;
-                    Update = &CbActUpdate;
+                    Tick = &CbActTick;
                     GetDelay = &CbActDelay;
                     GetInterval = &CbActInterval;
                     GetMaxCallCnt = &CbActMaxCnt;
@@ -399,23 +399,23 @@ namespace XD.GameModule.Module.MUpdate
 
                     switch (type)
                     {
-                        case RegInfo.RegType.Update:
-                            if (info.Update == null) goto Failure;
-                            _updateInst = info.Update;
-                            Update = &CbUpdateUpdate;
-                            GetInterval = &CbUpdateInterval;
+                        case RegInfo.RegType.Tick:
+                            if (info.Tick == null) goto Failure;
+                            _tickInst = info.Tick;
+                            Tick = &CbTickTick;
+                            GetInterval = &CbTickInterval;
                             break;
-                        case RegInfo.RegType.LateUpdate:
-                            if (info.LateUpdate == null) goto Failure;
-                            _lateUpdateInst = info.LateUpdate;
-                            Update = &CbLateUpdateUpdate;
-                            GetInterval = &CbLateUpdateInterval;
+                        case RegInfo.RegType.LateTick:
+                            if (info.LateTick == null) goto Failure;
+                            _lateTickInst = info.LateTick;
+                            Tick = &CbLateTickTick;
+                            GetInterval = &CbLateTickInterval;
                             break;
-                        case RegInfo.RegType.FixedUpdate:
-                            if (info.FixedUpdate == null) goto Failure;
-                            _fixedUpdateInst = info.FixedUpdate;
-                            Update = &CbFixedUpdateUpdate;
-                            GetInterval = &CbFixedUpdateInterval;
+                        case RegInfo.RegType.PhysicalTick:
+                            if (info.PhysicalTick == null) goto Failure;
+                            _physicalTickInst = info.PhysicalTick;
+                            Tick = &CbPhysicalTickTick;
+                            GetInterval = &CbPhysicalTickInterval;
                             break;
                         case RegInfo.RegType.Custom:
                         default: goto Failure;
@@ -424,15 +424,15 @@ namespace XD.GameModule.Module.MUpdate
 
                 return;
                 Failure:
-                Update = &CbUpdateEmpty;
+                Tick = &CbTickEmpty;
                 GetDelay = &CbFloat0;
                 GetInterval = &CbFloat0;
                 GetMaxCallCnt = &CbLong1;
             }
 
-            private IUpdate? _updateInst;
-            private ILateUpdate? _lateUpdateInst;
-            private IFixedUpdate? _fixedUpdateInst;
+            private ITick? _tickInst;
+            private ILateTicker? _lateTickInst;
+            private IPhysicalTicker? _physicalTickInst;
 
             private long _actMaxCallCnt;
             private float _actDelay;
@@ -444,32 +444,32 @@ namespace XD.GameModule.Module.MUpdate
             private static long CbLong0(CbInfo _) => 0;
             private static long CbLong1(CbInfo _) => 1;
             private static float CbFloat0(CbInfo _) => 0f;
-            private static bool CbUpdateEmpty(CbInfo _, float __, float ___) => false;
+            private static bool CbTickEmpty(CbInfo _, float __, float ___) => false;
 
             private static float CbActInterval(CbInfo self) => self._actInterval;
-            private static float CbUpdateInterval(CbInfo self) => self._updateInst!.UpdateInterval;
-            private static float CbLateUpdateInterval(CbInfo self) => self._lateUpdateInst!.LateUpdateInterval;
-            private static float CbFixedUpdateInterval(CbInfo self) => self._fixedUpdateInst!.FixedUpdateInterval;
+            private static float CbTickInterval(CbInfo self) => self._tickInst!.TickInterval;
+            private static float CbLateTickInterval(CbInfo self) => self._lateTickInst!.LateTickInterval;
+            private static float CbPhysicalTickInterval(CbInfo self) => self._physicalTickInst!.PhysicalTickInterval;
 
             private static float CbActDelay(CbInfo self) => self._actDelay;
             private static long CbActMaxCnt(CbInfo self) => self._actMaxCallCnt;
 
-            private static bool CbActUpdate(CbInfo self, float dt, float rdt) => self._act!(dt, rdt);
-            private static bool CbUpdateUpdate(CbInfo self, float dt, float rdt)
+            private static bool CbActTick(CbInfo self, float dt, float rdt) => self._act!(dt, rdt);
+            private static bool CbTickTick(CbInfo self, float dt, float rdt)
             {
-                self._updateInst!.OnUpdate(dt, rdt);
+                self._tickInst!.OnTick(dt, rdt);
                 return true;
             }
 
-            private static bool CbLateUpdateUpdate(CbInfo self, float dt, float rdt)
+            private static bool CbLateTickTick(CbInfo self, float dt, float rdt)
             {
-                self._lateUpdateInst!.OnLateUpdate(dt, rdt);
+                self._lateTickInst!.OnLateTick(dt, rdt);
                 return true;
             }
 
-            private static bool CbFixedUpdateUpdate(CbInfo self, float dt, float rdt)
+            private static bool CbPhysicalTickTick(CbInfo self, float dt, float rdt)
             {
-                self._fixedUpdateInst!.OnFixedUpdate(dt, rdt);
+                self._physicalTickInst!.OnPhysicalTick(dt, rdt);
                 return true;
             }
 
@@ -481,10 +481,10 @@ namespace XD.GameModule.Module.MUpdate
             public enum RegType : byte
             {
                 // ReSharper disable once PreferConcreteValueOverDefault
-                Custom = default,   // 接口类型
-                Update,             // Update 回调
-                LateUpdate,         // LateUpdate 回调
-                FixedUpdate         // FixedUpdate 回调
+                Custom = default, // 接口类型
+                Tick,             // Tick 回调
+                LateTick,         // LateTick 回调
+                PhysicalTick      // PhysicalTick 回调
             }
 
             public Guid Id { get; }
@@ -493,9 +493,9 @@ namespace XD.GameModule.Module.MUpdate
 
             public IPolling? Source { get; }
             public Action? DisposeCallback { get; }
-            public IUpdate? Update { get; }
-            public ILateUpdate? LateUpdate { get; }
-            public IFixedUpdate? FixedUpdate { get; }
+            public ITick? Tick { get; }
+            public ILateTicker? LateTick { get; }
+            public IPhysicalTicker? PhysicalTick { get; }
 
             #endregion
 
@@ -517,9 +517,9 @@ namespace XD.GameModule.Module.MUpdate
                 Type = type;
                 Source = src;
                 Delay = delay;
-                Update = null;
-                LateUpdate = null;
-                FixedUpdate = null;
+                Tick = null;
+                LateTick = null;
+                PhysicalTick = null;
                 Interval = interval;
                 MaxCallCnt = maxCallCnt;
                 DisposeCallback = disposeCb;
@@ -531,9 +531,9 @@ namespace XD.GameModule.Module.MUpdate
 
                 Act = null;
                 Source = source;
-                Update = null;
-                LateUpdate = null;
-                FixedUpdate = null;
+                Tick = null;
+                LateTick = null;
+                PhysicalTick = null;
                 Type = RegType.Custom;
                 MaxCallCnt = 0;
                 Interval = 0;
@@ -541,9 +541,9 @@ namespace XD.GameModule.Module.MUpdate
                 DisposeCallback = disposeCallback;
 
                 if (Source == null) return;
-                Update = Source as IUpdate;
-                FixedUpdate = Source as IFixedUpdate;
-                LateUpdate = Source as ILateUpdate;
+                Tick = Source as ITick;
+                PhysicalTick = Source as IPhysicalTicker;
+                LateTick = Source as ILateTicker;
             }
         }
 
@@ -551,7 +551,7 @@ namespace XD.GameModule.Module.MUpdate
 
         #region Driver
 
-        private unsafe void OnUpdate(float dt, float rdt)
+        private unsafe void OnTick(float dt, float rdt)
         {
             CheckRegister();
             CheckUnregister();
@@ -566,7 +566,7 @@ namespace XD.GameModule.Module.MUpdate
                     continue;
                 }
 
-                var ret = info.Update(info, dt, rdt);
+                var ret = info.Tick(info, dt, rdt);
                 if (info.CallCnt == ulong.MaxValue) info.CallCnt = 1;
                 else info.CallCnt++;
                 info.LastCallDeltaTime = 0;
@@ -574,10 +574,10 @@ namespace XD.GameModule.Module.MUpdate
                 var maxCallCnt = info.GetMaxCallCnt(info);
                 if (!ret || (maxCallCnt > 0 && info.CallCnt >= (ulong)maxCallCnt)) Unregister(info.Source);
             }
-            OnUpdateDirect?.Invoke(dt, rdt);
+            OnTickDirect?.Invoke(dt, rdt);
         }
 
-        private unsafe void OnFixedUpdate(float dt, float rdt)
+        private unsafe void OnPhysicalTick(float dt, float rdt)
         {
             CheckRegister();
             CheckUnregister();
@@ -592,7 +592,7 @@ namespace XD.GameModule.Module.MUpdate
                     continue;
                 }
 
-                var ret = info.Update(info, dt, rdt);
+                var ret = info.Tick(info, dt, rdt);
                 if (info.CallCnt == ulong.MaxValue) info.CallCnt = 1;
                 else info.CallCnt++;
                 info.LastCallDeltaTime = 0;
@@ -600,10 +600,10 @@ namespace XD.GameModule.Module.MUpdate
                 var maxCallCnt = info.GetMaxCallCnt(info);
                 if (!ret || (maxCallCnt > 0 && info.CallCnt >= (ulong)maxCallCnt)) Unregister(info.Source);
             }
-            OnFixedUpdateDirect?.Invoke(dt, rdt);
+            OnPhysicalTickDirect?.Invoke(dt, rdt);
         }
 
-        private unsafe void OnLateUpdate(float dt, float rdt)
+        private unsafe void OnLateTick(float dt, float rdt)
         {
             CheckRegister();
             CheckUnregister();
@@ -618,7 +618,7 @@ namespace XD.GameModule.Module.MUpdate
                     continue;
                 }
 
-                var ret = info.Update(info, dt, rdt);
+                var ret = info.Tick(info, dt, rdt);
                 if (info.CallCnt == ulong.MaxValue) info.CallCnt = 1;
                 else info.CallCnt++;
                 info.LastCallDeltaTime = 0;
@@ -626,7 +626,7 @@ namespace XD.GameModule.Module.MUpdate
                 var maxCallCnt = info.GetMaxCallCnt(info);
                 if (!ret || (maxCallCnt > 0 && info.CallCnt >= (ulong)maxCallCnt)) Unregister(info.Source);
             }
-            OnLateUpdateDirect?.Invoke(dt, rdt);
+            OnLateTickDirect?.Invoke(dt, rdt);
         }
 
         private void CheckUnregister()
@@ -663,13 +663,13 @@ namespace XD.GameModule.Module.MUpdate
             _instFixedUpd.Clear();
             lock (_regInfoDict) _regInfoDict.Clear();
 
-            E.Tick += OnUpdate;
-            E.LateTick += OnLateUpdate;
-            E.PhysicalTick += OnFixedUpdate;
+            E.TickEvent += OnTick;
+            E.LateTickEvent += OnLateTick;
+            E.PhysicalTickEvent += OnPhysicalTick;
 
-            OnUpdateDirect += _coroutineInterface.Update;
-            OnLateUpdateDirect += _coroutineInterface.LateUpdate;
-            OnFixedUpdateDirect += _coroutineInterface.FixedUpdate;
+            OnTickDirect += _coroutineInterface.Tick;
+            OnLateTickDirect += _coroutineInterface.LateTick;
+            OnPhysicalTickDirect += _coroutineInterface.PhysicalTick;
             return IProcedure.RetInfo.Success;
         }
 
@@ -683,21 +683,21 @@ namespace XD.GameModule.Module.MUpdate
             _instFixedUpd.Clear();
             lock (_regInfoDict) _regInfoDict.Clear();
 
-            E.Tick -= OnUpdate;
-            E.LateTick -= OnLateUpdate;
-            E.PhysicalTick -= OnFixedUpdate;
-            E.Tick += OnUpdate;
-            E.LateTick += OnLateUpdate;
-            E.PhysicalTick += OnFixedUpdate;
+            E.TickEvent -= OnTick;
+            E.LateTickEvent -= OnLateTick;
+            E.PhysicalTickEvent -= OnPhysicalTick;
+            E.TickEvent += OnTick;
+            E.LateTickEvent += OnLateTick;
+            E.PhysicalTickEvent += OnPhysicalTick;
 
             return IProcedure.RetInfo.Success;
         }
 
         private IProcedure.RetInfo DeInit()
         {
-            E.Tick -= OnUpdate;
-            E.LateTick -= OnLateUpdate;
-            E.PhysicalTick -= OnFixedUpdate;
+            E.TickEvent -= OnTick;
+            E.LateTickEvent -= OnLateTick;
+            E.PhysicalTickEvent -= OnPhysicalTick;
             return IProcedure.RetInfo.Success;
         }
 

@@ -1,6 +1,4 @@
-﻿#nullable enable
-
-using System;
+﻿using System;
 using System.Threading.Tasks;
 using XD.Common.ScopeUtil;
 
@@ -13,7 +11,7 @@ namespace XD.Common.AsyncUtil
     /// await E.Upd.Register(new UpdateTask(asyncTask));
     /// </example>
     /// </summary>
-    public sealed class UpdateTask : XDObject, IUpdate, IAwaiter, IAwaitable<UpdateTask>
+    public sealed class TickTask : XDObject, ITick, IAwaiter, IAwaitable<TickTask>
     {
         public void OnCompleted(Action? continuation)
         {
@@ -28,9 +26,9 @@ namespace XD.Common.AsyncUtil
 
         public bool IsCompleted => _isCompleted && (_task?.IsCompleted ?? true);
         public void GetResult() {}
-        public UpdateTask GetAwaiter() => this;
+        public TickTask GetAwaiter() => this;
 
-        public void OnUpdate(float dt = 0, float rdt = 0)
+        public void OnTick(float dt = 0, float rdt = 0)
         {
             _isCompleted = true;
             if (IsDisposed) return;
@@ -40,8 +38,8 @@ namespace XD.Common.AsyncUtil
             _continuation?.Invoke();
         }
 
-        public UpdateTask() => _isCompleted = false;
-        public UpdateTask(Task task) => _task = task;
+        public TickTask() => _isCompleted = false;
+        public TickTask(Task task) => _task = task;
 
         private readonly Task? _task;
         private Action? _continuation;
@@ -54,7 +52,7 @@ namespace XD.Common.AsyncUtil
     /// var t = await E.Upd.Register(new UpdateTask(asyncTask));
     /// </example>
     /// </summary>
-    public sealed class UpdateTask<T> : XDObject, IUpdate, IAwaiter<T>, IAwaitable<UpdateTask<T>, T>
+    public sealed class TickTask<T> : XDObject, ITick, IAwaiter<T>, IAwaitable<TickTask<T>, T>
     {
         public void OnCompleted(Action? continuation)
         {
@@ -65,9 +63,9 @@ namespace XD.Common.AsyncUtil
 
         public bool IsCompleted => _task.IsCompleted;
         public T GetResult() => _task.Result;
-        public UpdateTask<T> GetAwaiter() => this;
+        public TickTask<T> GetAwaiter() => this;
 
-        public void OnUpdate(float dt = 0, float rdt = 0)
+        public void OnTick(float dt = 0, float rdt = 0)
         {
             if (IsDisposed) return;
             if (!_task.IsCompleted) return;
@@ -76,12 +74,12 @@ namespace XD.Common.AsyncUtil
             _continuation?.Invoke();
         }
 
-        public UpdateTask(Task<T> task) => _task = task;
+        public TickTask(Task<T> task) => _task = task;
         private readonly Task<T> _task;
         private Action? _continuation;
     }
 
-    public sealed class UpdateConditionTask : XDObject, IUpdate, IAwaiter, IAwaitable<UpdateConditionTask>
+    public sealed class TickConditionTask : XDObject, ITick, IAwaiter, IAwaitable<TickConditionTask>
     {
         public void OnCompleted(Action? continuation)
         {
@@ -96,9 +94,9 @@ namespace XD.Common.AsyncUtil
 
         public bool IsCompleted => _isCompleted && (_condition?.Invoke() ?? true);
         public void GetResult() {}
-        public UpdateConditionTask GetAwaiter() => this;
+        public TickConditionTask GetAwaiter() => this;
 
-        public void OnUpdate(float dt = 0, float rdt = 0)
+        public void OnTick(float dt = 0, float rdt = 0)
         {
             _isCompleted = true;
             if (IsDisposed) return;
@@ -108,8 +106,8 @@ namespace XD.Common.AsyncUtil
             _continuation?.Invoke();
         }
 
-        public UpdateConditionTask() => _isCompleted = false;
-        public UpdateConditionTask(Func<bool>? condition) => _condition = condition;
+        public TickConditionTask() => _isCompleted = false;
+        public TickConditionTask(Func<bool>? condition) => _condition = condition;
 
         private readonly Func<bool>? _condition;
         private Action? _continuation;

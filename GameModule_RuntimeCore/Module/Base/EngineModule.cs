@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using XD.Common.Log;
 using XD.Common.Procedure;
-using XD.GameModule.Module.MUpdate;
+using XD.GameModule.Module.MTick;
 
 // ReSharper disable MemberCanBePrivate.Local
 // ReSharper disable MemberCanBePrivate.Global
@@ -31,13 +31,15 @@ namespace XD.GameModule.Module
         }
 
         #region Tick
-        public static void OnTick(float dt, float rdt) => Tick?.Invoke(dt, rdt);
-        public static void OnLateTick(float dt, float rdt) => LateTick?.Invoke(dt, rdt);
-        public static void OnPhysicalTick(float dt, float rdt) => PhysicalTick?.Invoke(dt, rdt);
+        public static void OnTick(float dt, float rdt) => TickEvent?.Invoke(dt, rdt);
+        public static void OnLateTick(float dt, float rdt) => LateTickEvent?.Invoke(dt, rdt);
+        public static void OnPhysicalTick(float dt, float rdt) => PhysicalTickEvent?.Invoke(dt, rdt);
 
-        internal static event Action<float, float>? Tick;
-        internal static event Action<float, float>? LateTick;
-        internal static event Action<float, float>? PhysicalTick;
+        // ReSharper disable InconsistentNaming
+        internal static event Action<float, float>? TickEvent;
+        internal static event Action<float, float>? LateTickEvent;
+        internal static event Action<float, float>? PhysicalTickEvent;
+        // ReSharper restore InconsistentNaming
         #endregion
 
         public static float InitProcess => _initProcedure?.Process ?? 0f;
@@ -50,15 +52,15 @@ namespace XD.GameModule.Module
                 if (Modules.Count <= 0) return EmptyProcedure;
                 if (_initProcedure != null) return _initProcedure;
 
-                var moduleProcedure = new ProcedureSerialActuator_Upd();
-                OnUpdateInit += moduleProcedure.OnUpdate;
+                var moduleProcedure = new ProcedureSerialActuator_Tick();
+                OnUpdateInit += moduleProcedure.OnTick;
                 foreach (var layer in Modules.Values)
                 {
                     if (layer.Count <= 0) continue;
-                    var layerProcedure = new ProcedureParallelActuator_Upd();
+                    var layerProcedure = new ProcedureParallelActuator_Tick();
                     foreach (var module in layer) layerProcedure.Add(module.InitProcedure());
                     moduleProcedure.Add(layerProcedure);
-                    OnUpdateInit += layerProcedure.OnUpdate;
+                    OnUpdateInit += layerProcedure.OnTick;
                 }
                 return _initProcedure = moduleProcedure;
             }
@@ -71,15 +73,15 @@ namespace XD.GameModule.Module
                 if (Modules.Count <= 0) return EmptyProcedure;
                 if (_reinitProcedure != null) return _reinitProcedure;
 
-                var moduleProcedure = new ProcedureSerialActuator_Upd();
-                OnUpdateReinit += moduleProcedure.OnUpdate;
+                var moduleProcedure = new ProcedureSerialActuator_Tick();
+                OnUpdateReinit += moduleProcedure.OnTick;
                 foreach (var layer in Modules.Values)
                 {
                     if (layer.Count <= 0) continue;
-                    var layerProcedure = new ProcedureParallelActuator_Upd();
+                    var layerProcedure = new ProcedureParallelActuator_Tick();
                     foreach (var module in layer) layerProcedure.Add(module.ReinitProcedure());
                     moduleProcedure.Add(layerProcedure);
-                    OnUpdateReinit += layerProcedure.OnUpdate;
+                    OnUpdateReinit += layerProcedure.OnTick;
                 }
                 return _reinitProcedure = moduleProcedure;
             }
@@ -180,7 +182,7 @@ namespace XD.GameModule.Module
             _state = State.Initing;
             var procedure = InitProcedure;
 
-            Tick += OnUpdateInitCb;
+            TickEvent += OnUpdateInitCb;
             procedure.OnEnd += OnEnd;
             procedure.Do();
             return;
@@ -188,7 +190,7 @@ namespace XD.GameModule.Module
             void OnEnd(IProcedure pcd, IProcedure.EndType endType, Exception? exception)
             {
                 procedure.OnEnd -= OnEnd;
-                Tick -= OnUpdateInitCb;
+                TickEvent -= OnUpdateInitCb;
                 _state = State.Inited;
                 OnInited?.Invoke();
             }
@@ -199,7 +201,7 @@ namespace XD.GameModule.Module
             if (_state != State.Inited) return;
             _state = State.Reiniting;
             var deinitProcedure = ReinitProcedure;
-            Tick += OnUpdateReInitCb;
+            TickEvent += OnUpdateReInitCb;
             deinitProcedure.OnEnd += OnEnd;
             deinitProcedure.Do();
             return;
@@ -209,7 +211,7 @@ namespace XD.GameModule.Module
                 deinitProcedure.OnEnd -= OnEnd;
                 _state = State.Inited;
 
-                Tick -= OnUpdateReInitCb;
+                TickEvent -= OnUpdateReInitCb;
                 OnReinited?.Invoke();
                 if (isCallOnInited) OnInited?.Invoke();
             }
@@ -265,11 +267,11 @@ namespace XD.GameModule.Module
         }
 
         private static State _state;
-        private static ProcedureSerialActuator_Upd? _initProcedure;
-        private static ProcedureSerialActuator_Upd? _reinitProcedure;
+        private static ProcedureSerialActuator_Tick? _initProcedure;
+        private static ProcedureSerialActuator_Tick? _reinitProcedure;
 
-        private static event UpdateModule.UpdFunc? OnUpdateInit;
-        private static event UpdateModule.UpdFunc? OnUpdateReinit;
+        private static event TickModule.TickFunc? OnUpdateInit;
+        private static event TickModule.TickFunc? OnUpdateReinit;
 
         public static readonly ProcedureSync EmptyProcedure = new();
         private static readonly SortedDictionary<sbyte, List<EngineModule>> Modules = new();

@@ -18,14 +18,14 @@ namespace XD.GameModule.Module.MEvent
             _eventMap.Clear();
             _listenerMap.Clear();
 
-            if (E.Upd == null) return (IProcedure.EndType.Abort, new ArgumentNullException(nameof(E.Upd)));
-            E.Upd.OnUpdateDirect += OnUpdate;
+            if (E.Tick == null) return (IProcedure.EndType.Abort, new ArgumentNullException(nameof(E.Tick)));
+            E.Tick.OnTickDirect += OnTick;
             return IProcedure.RetInfo.Success;
         }
 
         private IProcedure.RetInfo DeInit()
         {
-            if (E.Upd != null) E.Upd.OnUpdateDirect -= OnUpdate;
+            if (E.Tick != null) E.Tick.OnTickDirect -= OnTick;
             return IProcedure.RetInfo.Success;
         }
 

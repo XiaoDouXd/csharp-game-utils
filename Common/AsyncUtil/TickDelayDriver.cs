@@ -1,12 +1,10 @@
-﻿#nullable enable
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using XD.Common.ScopeUtil;
 
 namespace XD.Common.AsyncUtil
 {
-    public class UpdateDelayDriver : XDObject, IUpdate
+    public class TickDelayDriver : XDObject, ITick
     {
         public object AddDelay(Action action, double delay)
             => _tasks.AddLast(new Task(action, delay + (DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 0.001)));
@@ -17,7 +15,7 @@ namespace XD.Common.AsyncUtil
             return true;
         }
 
-        public void OnUpdate(float dt, float rdt)
+        public void OnTick(float dt, float rdt)
         {
             var currTime = (DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 0.001);
 

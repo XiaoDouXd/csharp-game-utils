@@ -1,6 +1,4 @@
-﻿#nullable enable
-
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Collections.Generic;
 
 namespace XD.GameModule.Module.MEvent

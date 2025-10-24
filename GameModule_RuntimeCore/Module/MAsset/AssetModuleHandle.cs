@@ -295,7 +295,7 @@ namespace XD.GameModule.Module.MAsset
             private TTask _handle;
         }
 
-        private UpdateDelayDriver _delayDriver = new();
+        private TickDelayDriver _delayDriver = new();
         private readonly ConcurrentDictionary<string, AssetHandle> _assetHandles = new();
         #endregion
     }

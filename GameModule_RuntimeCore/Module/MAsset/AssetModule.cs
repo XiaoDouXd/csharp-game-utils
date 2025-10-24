@@ -51,8 +51,8 @@ namespace XD.GameModule.Module.MAsset
 
         internal override IProcedure InitProcedure() => new ProcedureSync(() =>
         {
-            if (E.Upd == null) return (IProcedure.EndType.Abort, new ArgumentNullException(nameof(E.Upd)));
-            E.Upd.Register(_delayDriver);
+            if (E.Tick == null) return (IProcedure.EndType.Abort, new ArgumentNullException(nameof(E.Tick)));
+            E.Tick.Register(_delayDriver);
             return IProcedure.RetInfo.Success;
         });
 
@@ -61,8 +61,8 @@ namespace XD.GameModule.Module.MAsset
             foreach (var handle in _assetHandles.Values) handle.Release();
             _assetHandles.Clear();
             _delayDriver.Dispose();
-            _delayDriver = new UpdateDelayDriver();
-            E.Upd?.Register(_delayDriver);
+            _delayDriver = new TickDelayDriver();
+            E.Tick?.Register(_delayDriver);
             return IProcedure.RetInfo.Success;
         });
 
@@ -71,7 +71,7 @@ namespace XD.GameModule.Module.MAsset
             foreach (var handle in _assetHandles.Values) handle.Release();
             _assetHandles.Clear();
             _delayDriver.Dispose();
-            _delayDriver = new UpdateDelayDriver();
+            _delayDriver = new TickDelayDriver();
             return IProcedure.RetInfo.Success;
         });
 

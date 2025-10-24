@@ -1,63 +1,62 @@
 ﻿using System;
 using XD.Common.FunctionalUtil;
 using XD.Common.ScopeUtil;
-using E = XD.GameModule.Module.E;
 
 // ReSharper disable UnusedMember.Global
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable UnusedAutoPropertyAccessor.Global
 // ReSharper disable ConvertConstructorToMemberInitializers
 
-namespace XD.GameModule.Module.MUpdate
+namespace XD.GameModule.Module.MTick
 {
     /// <summary>
     /// 刷新器
     /// </summary>
-    public sealed class Updater : XDObject
+    public sealed class Ticker : XDObject
     {
         public static int PoolSize { get; set; } = 512;
 
-        public static Updater New()
+        public static Ticker New()
         {
             var obj = NewInner();
-            E.Upd?.Register(obj._inner, false);
+            E.Tick?.Register(obj._inner, false);
             return obj;
         }
 
-        public static Updater New(Action act)
-        {
-            var obj = NewInner();
-            obj.SetTarget(act);
-            E.Upd?.Register(obj._inner, false);
-            return obj;
-        }
-
-        public static Updater New(Action<float, float> act)
+        public static Ticker New(Action act)
         {
             var obj = NewInner();
             obj.SetTarget(act);
-            E.Upd?.Register(obj._inner, false);
+            E.Tick?.Register(obj._inner, false);
             return obj;
         }
 
-        public static void Del(Updater? obj)
+        public static Ticker New(Action<float, float> act)
+        {
+            var obj = NewInner();
+            obj.SetTarget(act);
+            E.Tick?.Register(obj._inner, false);
+            return obj;
+        }
+
+        public static void Del(Ticker? obj)
         {
             if (obj == null) return;
             obj.SetTarget();
-            E.Upd?.Unregister(obj._inner);
+            E.Tick?.Unregister(obj._inner);
         }
 
-        private static Updater NewInner()
+        private static Ticker NewInner()
         {
-            var obj = new Updater();
+            var obj = new Ticker();
             obj.Interval = 0;
             return obj;
         }
 
         public float Interval
         {
-            get => _inner.UpdateInterval;
-            set => _inner.UpdateInterval = value;
+            get => _inner.TickInterval;
+            set => _inner.TickInterval = value;
         }
 
         public void SetTarget()
@@ -89,20 +88,20 @@ namespace XD.GameModule.Module.MUpdate
             base.Dispose();
         }
 
-        ~Updater()
+        ~Ticker()
         {
             SetTarget();
-            E.Upd?.Unregister(_inner);
+            E.Tick?.Unregister(_inner);
         }
 
-        private Updater() => _inner = new UpdaterInner();
+        private Ticker() => _inner = new TickerInner();
 
-        private class UpdaterInner : IUpdate
+        private class TickerInner : ITick
         {
-            public float UpdateInterval { get; set; }
+            public float TickInterval { get; set; }
 
             public Action<float, float> Cb = F.Empty;
-            public void OnUpdate(float dt, float rdt) => Cb(dt, rdt);
+            public void OnTick(float dt, float rdt) => Cb(dt, rdt);
 
             public void OnUpdateWhite(float _, float __) => Action!();
             public void OnUpdateWithParam(float dt, float rdt) => ActionWithParam!(dt, rdt);
@@ -110,59 +109,59 @@ namespace XD.GameModule.Module.MUpdate
             public Action? Action;
             public Action<float, float>? ActionWithParam;
         }
-        private readonly UpdaterInner _inner;
+        private readonly TickerInner _inner;
     }
 
     /// <summary>
     ///
     /// </summary>
-    public sealed class FixedUpdater : XDObject
+    public sealed class PhysicalTicker : XDObject
     {
         public static int PoolSize { get; set; } = 512;
 
-        public static FixedUpdater New()
+        public static PhysicalTicker New()
         {
             var obj = NewInner();
-            E.Upd?.Register(obj._inner);
+            E.Tick?.Register(obj._inner);
             return obj;
         }
 
-        public static FixedUpdater? New(Action? act)
-        {
-            if (act == null) return null;
-            var obj = NewInner();
-            obj.SetTarget(act);
-            E.Upd?.Register(obj._inner);
-            return obj;
-        }
-
-        public static FixedUpdater? New(Action<float, float>? act)
+        public static PhysicalTicker? New(Action? act)
         {
             if (act == null) return null;
             var obj = NewInner();
             obj.SetTarget(act);
-            E.Upd?.Register(obj._inner);
+            E.Tick?.Register(obj._inner);
             return obj;
         }
 
-        public static void Del(FixedUpdater? obj)
+        public static PhysicalTicker? New(Action<float, float>? act)
+        {
+            if (act == null) return null;
+            var obj = NewInner();
+            obj.SetTarget(act);
+            E.Tick?.Register(obj._inner);
+            return obj;
+        }
+
+        public static void Del(PhysicalTicker? obj)
         {
             if (obj == null) return;
             obj.SetTarget();
-            E.Upd?.Unregister(obj._inner);
+            E.Tick?.Unregister(obj._inner);
         }
 
-        private static FixedUpdater NewInner()
+        private static PhysicalTicker NewInner()
         {
-            var obj = new FixedUpdater();
+            var obj = new PhysicalTicker();
             obj.Interval = 0;
             return obj;
         }
 
         public float Interval
         {
-            get => _inner.FixedUpdateInterval;
-            set => _inner.FixedUpdateInterval = value;
+            get => _inner.PhysicalTickInterval;
+            set => _inner.PhysicalTickInterval = value;
         }
 
         public void SetTarget()
@@ -195,24 +194,24 @@ namespace XD.GameModule.Module.MUpdate
             base.Dispose();
         }
 
-        ~FixedUpdater()
+        ~PhysicalTicker()
         {
             SetTarget();
-            E.Upd?.Unregister(_inner);
+            E.Tick?.Unregister(_inner);
         }
 
-        private FixedUpdater() => _inner = new UpdaterInner();
+        private PhysicalTicker() => _inner = new TickerInner();
 
         /// <summary>
         ///
         /// </summary>
-        private class UpdaterInner : IFixedUpdate
+        private class TickerInner : IPhysicalTicker
         {
-            public UpdaterInner() => Cb = F.Empty;
-            public float FixedUpdateInterval { get; set; }
+            public TickerInner() => Cb = F.Empty;
+            public float PhysicalTickInterval { get; set; }
 
             public Action<float, float> Cb;
-            public void OnFixedUpdate(float dt, float rdt) => Cb(dt, rdt);
+            public void OnPhysicalTick(float dt, float rdt) => Cb(dt, rdt);
 
             public void OnUpdateWhite(float _, float __) => Action!();
             public void OnUpdateWithParam(float dt, float rdt) => ActionWithParam!(dt, rdt);
@@ -220,56 +219,56 @@ namespace XD.GameModule.Module.MUpdate
             public Action? Action;
             public Action<float, float>? ActionWithParam;
         }
-        private readonly UpdaterInner _inner;
+        private readonly TickerInner _inner;
     }
 
-    public sealed class LateUpdater : XDObject
+    public sealed class LateTicker : XDObject
     {
         public static int PoolSize { get; set; } = 512;
 
-        public static LateUpdater New()
+        public static LateTicker New()
         {
             var obj = NewInner();
-            E.Upd?.Register(obj._inner);
+            E.Tick?.Register(obj._inner);
             return obj;
         }
 
-        public static LateUpdater? New(Action? act)
-        {
-            if (act == null) return null;
-            var obj = NewInner();
-            obj.SetTarget(act);
-            E.Upd?.Register(obj._inner);
-            return obj;
-        }
-
-        public static LateUpdater? New(Action<float, float>? act)
+        public static LateTicker? New(Action? act)
         {
             if (act == null) return null;
             var obj = NewInner();
             obj.SetTarget(act);
-            E.Upd?.Register(obj._inner);
+            E.Tick?.Register(obj._inner);
             return obj;
         }
 
-        public static void Del(LateUpdater? obj)
+        public static LateTicker? New(Action<float, float>? act)
+        {
+            if (act == null) return null;
+            var obj = NewInner();
+            obj.SetTarget(act);
+            E.Tick?.Register(obj._inner);
+            return obj;
+        }
+
+        public static void Del(LateTicker? obj)
         {
             if (obj == null) return;
             obj.SetTarget();
-            E.Upd?.Unregister(obj._inner);
+            E.Tick?.Unregister(obj._inner);
         }
 
-        private static LateUpdater NewInner()
+        private static LateTicker NewInner()
         {
-            var obj = new LateUpdater();
+            var obj = new LateTicker();
             obj.Interval = 0;
             return obj;
         }
 
         public float Interval
         {
-            get => _inner.LateUpdateInterval;
-            set => _inner.LateUpdateInterval = value;
+            get => _inner.LateTickInterval;
+            set => _inner.LateTickInterval = value;
         }
 
         public void SetTarget()
@@ -301,21 +300,21 @@ namespace XD.GameModule.Module.MUpdate
             base.Dispose();
         }
 
-        ~LateUpdater()
+        ~LateTicker()
         {
             SetTarget();
-            E.Upd?.Unregister(_inner);
+            E.Tick?.Unregister(_inner);
         }
 
-        private LateUpdater() => _inner = new UpdaterInner();
+        private LateTicker() => _inner = new TickerInner();
 
-        private class UpdaterInner : ILateUpdate
+        private class TickerInner : ILateTicker
         {
-            public UpdaterInner() => Cb = F.Empty;
-            public float LateUpdateInterval { get; set; }
+            public TickerInner() => Cb = F.Empty;
+            public float LateTickInterval { get; set; }
 
             public Action<float, float> Cb;
-            public void OnLateUpdate(float dt, float rdt) => Cb(dt, rdt);
+            public void OnLateTick(float dt, float rdt) => Cb(dt, rdt);
 
             public void OnUpdateWhite(float _, float __) => Action!();
             public void OnUpdateWithParam(float dt, float rdt) => ActionWithParam!(dt, rdt);
@@ -323,6 +322,6 @@ namespace XD.GameModule.Module.MUpdate
             public Action? Action;
             public Action<float, float>? ActionWithParam;
         }
-        private readonly UpdaterInner _inner;
+        private readonly TickerInner _inner;
     }
 }

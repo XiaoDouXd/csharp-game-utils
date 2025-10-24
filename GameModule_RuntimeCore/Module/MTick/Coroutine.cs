@@ -1,6 +1,4 @@
-﻿#nullable enable
-
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using XD.Common.AsyncUtil;
@@ -12,17 +10,17 @@ using XD.Common.AsyncUtil;
 // ReSharper disable UnusedAutoPropertyAccessor.Global
 // ReSharper disable ArrangeTrailingCommaInMultilineLists
 
-namespace XD.GameModule.Module.MUpdate
+namespace XD.GameModule.Module.MTick
 {
     public enum ECoroutineType
     {
-        Update,
-        LateUpdate,
-        FixedUpdate,
+        Tick,
+        LateTick,
+        PhysicalTick,
     }
 
     // ReSharper disable once ClassNeverInstantiated.Global
-    public partial class UpdateModule
+    public partial class TickModule
     {
         /// <summary> 协程接口 </summary>
         // ReSharper disable once IdentifierTypo
@@ -40,7 +38,7 @@ namespace XD.GameModule.Module.MUpdate
             /// <param name="coroutineGenerator"> 协程生成函数 </param>
             /// <param name="type"> 协程调用时机 </param>
             /// <returns> 协程删除句柄 registerHandle </returns>
-            public ICoroutineHandle? Run(Func<IEnumerator<double>?> coroutineGenerator, ECoroutineType type = ECoroutineType.Update);
+            public ICoroutineHandle? Run(Func<IEnumerator<double>?> coroutineGenerator, ECoroutineType type = ECoroutineType.Tick);
 
             /// <summary>
             /// 在一个协程结束或销毁之后运行一个协程
@@ -50,7 +48,7 @@ namespace XD.GameModule.Module.MUpdate
             /// <param name="type"> 新协程调用时机 </param>
             /// <returns></returns>
             public ICoroutineHandle? RunAfter(ICoroutineHandle? registerHandle, Func<IEnumerator<double>?>? coroutineGenerator,
-                ECoroutineType type = ECoroutineType.Update);
+                ECoroutineType type = ECoroutineType.Tick);
 
             /// <summary>
             /// 取消运行协程
@@ -86,13 +84,13 @@ namespace XD.GameModule.Module.MUpdate
 
         private sealed class CoroutineInterface : ICoroutineInterface
         {
-            public ICoroutineHandle? Run(Func<IEnumerator<double>?>? coroutineGenerator, ECoroutineType type = ECoroutineType.Update)
+            public ICoroutineHandle? Run(Func<IEnumerator<double>?>? coroutineGenerator, ECoroutineType type = ECoroutineType.Tick)
             {
                 var task = new Task(coroutineGenerator?.Invoke());
                 lock (task.Node) return !task.Do(0) ? null : RunImmInner(task, type);
             }
 
-            public ICoroutineHandle? RunAfter(ICoroutineHandle? registerHandle, Func<IEnumerator<double>?>? coroutineGenerator, ECoroutineType type = ECoroutineType.Update)
+            public ICoroutineHandle? RunAfter(ICoroutineHandle? registerHandle, Func<IEnumerator<double>?>? coroutineGenerator, ECoroutineType type = ECoroutineType.Tick)
             {
                 if (registerHandle is not Task targetTask) return null;
                 lock (targetTask)
@@ -111,9 +109,9 @@ namespace XD.GameModule.Module.MUpdate
                     }
 
                     var isImmRun = false;
-                    lock (_updateTasks)
+                    lock (_tickTasks)
                     {
-                        if (targetTask.Node.List == _updateTasks)
+                        if (targetTask.Node.List == _tickTasks)
                         {
                             var task = new Task(coroutineGenerator?.Invoke());
                             if (targetTask.IsCompleted) isImmRun = true;
@@ -137,7 +135,7 @@ namespace XD.GameModule.Module.MUpdate
                         return !task.Do(0) ? null : RunImmInner(task, type);
                     }
 
-                    lock (_lateUpdateTasks)
+                    lock (_lateTickTasks)
                     {
                         var task = new Task(coroutineGenerator?.Invoke());
                         if (targetTask.IsCompleted) isImmRun = true;
@@ -160,7 +158,7 @@ namespace XD.GameModule.Module.MUpdate
                         return !task.Do(0) ? null : RunImmInner(task, type);
                     }
 
-                    lock (_fixedUpdateTasks)
+                    lock (_physicalTickTasks)
                     {
                         var task = new Task(coroutineGenerator?.Invoke());
                         if (targetTask.IsCompleted) isImmRun = true;
@@ -194,11 +192,11 @@ namespace XD.GameModule.Module.MUpdate
                     if (_waitingTasks.TryGetValue(task, out _)) return _waitingTasks.TryRemove(task, out _);
 
                     var isRemoveSuccess = false;
-                    lock (_updateTasks)
+                    lock (_tickTasks)
                     {
-                        if (task.Node.List == _updateTasks)
+                        if (task.Node.List == _tickTasks)
                         {
-                            _updateTasks.Remove(task);
+                            _tickTasks.Remove(task);
                             isRemoveSuccess = true;
                         }
                     }
@@ -209,11 +207,11 @@ namespace XD.GameModule.Module.MUpdate
                         return true;
                     }
 
-                    lock (_lateUpdateTasks)
+                    lock (_lateTickTasks)
                     {
-                        if (task.Node.List == _lateUpdateTasks)
+                        if (task.Node.List == _lateTickTasks)
                         {
-                            _lateUpdateTasks.Remove(task);
+                            _lateTickTasks.Remove(task);
                             isRemoveSuccess = true;
                         }
                     }
@@ -224,11 +222,11 @@ namespace XD.GameModule.Module.MUpdate
                         return true;
                     }
 
-                    lock (_fixedUpdateTasks)
+                    lock (_physicalTickTasks)
                     {
-                        if (task.Node.List == _fixedUpdateTasks)
+                        if (task.Node.List == _physicalTickTasks)
                         {
-                            _fixedUpdateTasks.Remove(task);
+                            _physicalTickTasks.Remove(task);
                             isRemoveSuccess = true;
                         }
                     }
@@ -243,11 +241,11 @@ namespace XD.GameModule.Module.MUpdate
                 // ReSharper restore InvertIf
             }
 
-            public void Update(float dt, float rdt)
+            public void Tick(float dt, float rdt)
             {
-                lock (_updateTasks)
+                lock (_tickTasks)
                 {
-                    var node = _updateTasks.First;
+                    var node = _tickTasks.First;
                     while (node != null)
                     {
                         var next = node.Next;
@@ -255,7 +253,7 @@ namespace XD.GameModule.Module.MUpdate
                         {
                             if (!node.Value.Do(dt))
                             {
-                                _updateTasks.Remove(node);
+                                _tickTasks.Remove(node);
                                 node.Value.OnDel?.Invoke();
                             }
                         }
@@ -264,17 +262,17 @@ namespace XD.GameModule.Module.MUpdate
                 }
             }
 
-            public void LateUpdate(float dt, float rdt)
+            public void LateTick(float dt, float rdt)
             {
-                lock (_lateUpdateTasks)
+                lock (_lateTickTasks)
                 {
-                    var node = _lateUpdateTasks.First;
+                    var node = _lateTickTasks.First;
                     while (node != null)
                     {
                         var next = node.Next;
                         if (!node.Value.Do(dt))
                         {
-                            _lateUpdateTasks.Remove(node);
+                            _lateTickTasks.Remove(node);
                             node.Value.OnDel?.Invoke();
                         }
                         node = next;
@@ -282,17 +280,17 @@ namespace XD.GameModule.Module.MUpdate
                 }
             }
 
-            public void FixedUpdate(float dt, float rdt)
+            public void PhysicalTick(float dt, float rdt)
             {
-                lock (_fixedUpdateTasks)
+                lock (_physicalTickTasks)
                 {
-                    var node = _fixedUpdateTasks.First;
+                    var node = _physicalTickTasks.First;
                     while (node != null)
                     {
                         var next = node.Next;
                         if (!node.Value.Do(dt))
                         {
-                            _fixedUpdateTasks.Remove(node);
+                            _physicalTickTasks.Remove(node);
                             node.Value.OnDel?.Invoke();
                         }
                         node = next;
@@ -300,26 +298,26 @@ namespace XD.GameModule.Module.MUpdate
                 }
             }
 
-            private Task? RunImmInner(Task task, ECoroutineType type = ECoroutineType.Update)
+            private Task? RunImmInner(Task task, ECoroutineType type = ECoroutineType.Tick)
             {
                 switch (type)
                 {
-                    case ECoroutineType.Update:
-                        lock (_updateTasks) _updateTasks.AddLast(task.Node);
+                    case ECoroutineType.Tick:
+                        lock (_tickTasks) _tickTasks.AddLast(task.Node);
                         return task;
-                    case ECoroutineType.LateUpdate:
-                        lock (_lateUpdateTasks) _lateUpdateTasks.AddLast(task.Node);
+                    case ECoroutineType.LateTick:
+                        lock (_lateTickTasks) _lateTickTasks.AddLast(task.Node);
                         return task;
-                    case ECoroutineType.FixedUpdate:
-                        lock (_fixedUpdateTasks) _fixedUpdateTasks.AddLast(task.Node);
+                    case ECoroutineType.PhysicalTick:
+                        lock (_physicalTickTasks) _physicalTickTasks.AddLast(task.Node);
                         return task;
                     default: return null;
                 }
             }
 
-            private readonly LinkedList<Task> _updateTasks = new();
-            private readonly LinkedList<Task> _lateUpdateTasks = new();
-            private readonly LinkedList<Task> _fixedUpdateTasks = new();
+            private readonly LinkedList<Task> _tickTasks = new();
+            private readonly LinkedList<Task> _lateTickTasks = new();
+            private readonly LinkedList<Task> _physicalTickTasks = new();
             private readonly ConcurrentDictionary<Task, Action> _waitingTasks = new();
 
             private sealed class Task : ICoroutineHandle

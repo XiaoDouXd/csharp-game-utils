@@ -1,7 +1,7 @@
 ﻿using XD.GameModule.Module.MAsset;
 using XD.GameModule.Module.MConfig;
 using XD.GameModule.Module.MEvent;
-using XD.GameModule.Module.MUpdate;
+using XD.GameModule.Module.MTick;
 
 // ReSharper disable UnusedMember.Global
 // ReSharper disable UnassignedField.Global
@@ -16,7 +16,7 @@ namespace XD.GameModule.Module
         /// 轮询模块
         /// </summary>
         [EngineModule(1)]
-        public static UpdateModule? Upd { get; private set; }
+        public static TickModule? Tick { get; private set; }
 
         /// <summary>
         /// 事件模块
