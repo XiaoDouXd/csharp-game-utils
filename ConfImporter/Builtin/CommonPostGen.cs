@@ -23,12 +23,12 @@ namespace ConfImporter.Builtin
             lock (Types)
             {
                 // ReSharper disable once InconsistentNaming
-                const string Namespace = "XD.A0.Game.Runtime.Config";
+                var Namespace = conf.CodeNamespace ?? "XD.A0.Game.Runtime.Config";
 
                 var sb = new StringBuilder();
                 sb.Append(@"#nullable enable
 
-using XD.A0.Engine.Runtime.Module.MConfig;
+using XD.GameModule.Module.MConfig;
 
 // ReSharper disable All
 // ReSharper disable InconsistentNaming

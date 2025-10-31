@@ -2,20 +2,18 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Threading;
 using ConfImporter.Builtin.Type;
 using ConfImporter.Builtin.Util;
 using ConfImporter.Config;
-using MessagePack;
+using ConfImporter.Table;
 
 // ReSharper disable once CheckNamespace
 namespace ConfImporter.Builtin
 {
     public partial class GlobalTable : TableTypeDec
     {
-        public override bool CheckSheetName(string sheetName, string fileName)
+        public override bool CheckSheetName(string sheetName, string fileName, in SheetReader reader)
         {
             var sheetNameSpan = sheetName.AsSpan();
 
@@ -33,7 +31,7 @@ namespace ConfImporter.Builtin
             return !programName.IsEmpty && fileName.ToLower().StartsWith("g-");
         }
 
-        public override ITableInst? New(string sheetName, string fileName)
+        public override ITableInst? New(string sheetName, string fileName, in SheetReader reader)
         {
             var sheetNameSpan = sheetName.AsSpan();
 
@@ -51,30 +49,6 @@ namespace ConfImporter.Builtin
             var sName = programName.ToString();
             if (sName.StartsWith("__")) return null;
             return string.IsNullOrWhiteSpace(sName) ? null : new TableInst(this, sName);
-        }
-
-        public override void GenBytes(CancellationToken c)
-        {
-            lock (_tables)
-            {
-                if (_tables.Count <= 0)
-                {
-                    using var fEmpty = File.Create(Conf.ByteOutputTargetDir + "/GlobalTable.bytes");
-                    using var fWriterEmpty = new StreamWriter(fEmpty);
-                    fWriterEmpty.Write("");
-                    return;
-                }
-
-                var objList = new List<object?>();
-                foreach (var table in _tables.Values)
-                    objList.AddRange(table.Values.Select(field => field.Data));
-                var bytes = MessagePackSerializer.Serialize(objList);
-                using var f = File.Create(Conf.ByteOutputTargetDir + "/GlobalTable.bytes");
-                f.Write(bytes);
-                using var fJson = File.Create(Conf.ByteOutputTargetDir + "/GlobalTable.json");
-                using var fJsonWriter = new StreamWriter(fJson);
-                fJsonWriter.Write(MessagePackSerializer.ConvertToJson(bytes));
-            }
         }
 
         public override void Clear()

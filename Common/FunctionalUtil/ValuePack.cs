@@ -11,7 +11,7 @@ namespace XD.Common.FunctionalUtil
         public T Value { get; }
         public object ValueObj { get; }
     }
-    
+
     /// <summary>
     /// 值类型封包成引用类型
     /// </summary>
@@ -20,19 +20,19 @@ namespace XD.Common.FunctionalUtil
     {
         public T Value { get; set; }
         public override object ValueObj => Value;
-        
+
         public ValuePack() : base(typeof(T)) {}
         public void SetValue(T val) => Value = val;
 
         public bool Equals(T o) => EqualityComparer<T>.Default.Equals(o, Value);
         public bool Equals(ValuePack<T> other) => Value.Equals(other.Value);
-        public override bool Equals(object obj) => obj switch
+        public override bool Equals(object? obj) => obj switch
         {
             T val => Equals(val),
             ValuePack<T> pack => Equals(pack.Value),
             _ => false
         };
-        
+
         // ReSharper disable once NonReadonlyMemberInGetHashCode
         public override int GetHashCode() => Value.GetHashCode();
         public static implicit operator T(ValuePack<T> self) => self.Value;
@@ -45,7 +45,7 @@ namespace XD.Common.FunctionalUtil
     {
         public Type Type { get; }
         public abstract object ValueObj { get; }
-        
+
         protected ValuePack(Type type) => Type = type;
     }
 }

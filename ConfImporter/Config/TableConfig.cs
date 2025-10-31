@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using ConfImporter.Builtin;
+using ConfImporter.Table;
 
 // ReSharper disable once CheckNamespace
 // ReSharper disable MemberCanBePrivate.Global
@@ -32,8 +33,9 @@ namespace ConfImporter.Config
         /// </summary>
         /// <param name="sheetName"> 工作簿名 </param>
         /// <param name="fileName"> 文件名 </param>
+        /// <param name="reader"></param>
         /// <returns></returns>
-        public abstract bool CheckSheetName(string sheetName, string fileName);
+        public abstract bool CheckSheetName(string sheetName, string fileName, in SheetReader reader);
 
         /// <summary>
         /// 行首
@@ -163,8 +165,9 @@ namespace ConfImporter.Config
         /// </summary>
         /// <param name="sheetName"> 工作簿名 </param>
         /// <param name="fileName"> 文件名 </param>
+        /// <param name="reader"></param>
         /// <returns></returns>
-        public abstract ITableInst? New(string sheetName, string fileName);
+        public abstract ITableInst? New(string sheetName, string fileName, in SheetReader reader);
 
         /// <summary>
         /// 清理生成数据

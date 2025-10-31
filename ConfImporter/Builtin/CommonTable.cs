@@ -9,13 +9,14 @@ using ConfImporter.Builtin.Type;
 using ConfImporter.Builtin.Util;
 using ConfImporter.Builtin.Util.Gen;
 using ConfImporter.Config;
+using ConfImporter.Table;
 
 // ReSharper disable once CheckNamespace
 namespace ConfImporter.Builtin
 {
     public partial class CommonTable : TableTypeDec
     {
-        public override bool CheckSheetName(string sheetName, string fileName)
+        public override bool CheckSheetName(string sheetName, string fileName, in SheetReader reader)
         {
             var sheetNameSpan = sheetName.AsSpan();
 
@@ -28,9 +29,24 @@ namespace ConfImporter.Builtin
             idx = StringUtil.FindFirst(sheetNameSpan, '>');
             if (idx <= 0) return false;
             sheetNameSpan = sheetNameSpan[..idx];
+            if (sheetNameSpan.Length == 1 && sheetNameSpan[0] == '*')
+            {
+                sheetNameSpan = reader.Read(0, 0).AsSpan();
+                StringUtil.TrimHead(ref sheetNameSpan);
+                idx = StringUtil.FindFirst(sheetNameSpan, '<');
+                if (idx <= 0) return false;
+                sheetNameSpan = sheetNameSpan[(idx + 1)..];
+                StringUtil.TrimHead(ref sheetNameSpan);
+                idx = StringUtil.FindFirst(sheetNameSpan, '>');
+                if (idx <= 0) return false;
+                sheetNameSpan = sheetNameSpan[..idx];
+            }
 
+            idx = StringUtil.FindFirst(sheetNameSpan, '|');
+            if (idx > 0) sheetNameSpan = sheetNameSpan[..idx];
             var programName = StringUtil.MatchProgramValidName(ref sheetNameSpan);
             if (programName.IsEmpty) return false;
+            if (programName.StartsWith("__")) return false;
 
             var lower = fileName.ToLower();
             if (lower.StartsWith("g-")) return false;
@@ -39,7 +55,7 @@ namespace ConfImporter.Builtin
 
         public override int RowHeadSize => 4;
 
-        public override ITableInst? New(string sheetName, string fileName)
+        public override ITableInst? New(string sheetName, string fileName, in SheetReader reader)
         {
             var sheetNameSpan = sheetName.AsSpan();
 
@@ -52,38 +68,54 @@ namespace ConfImporter.Builtin
             idx = StringUtil.FindFirst(sheetNameSpan, '>');
             if (idx <= 0) return null;
             sheetNameSpan = sheetNameSpan[..idx];
+            if (sheetNameSpan.Length == 1 && sheetNameSpan[0] == '*')
+            {
+                sheetNameSpan = reader.Read(0, 0).AsSpan();
+                StringUtil.TrimHead(ref sheetNameSpan);
+                idx = StringUtil.FindFirst(sheetNameSpan, '<');
+                if (idx <= 0) return null;
+                sheetNameSpan = sheetNameSpan[(idx + 1)..];
+                StringUtil.TrimHead(ref sheetNameSpan);
+                idx = StringUtil.FindFirst(sheetNameSpan, '>');
+                if (idx <= 0) return null;
+                sheetNameSpan = sheetNameSpan[..idx];
+            }
+
+            idx = StringUtil.FindFirst(sheetNameSpan, '|');
+            var fullSheetNameSpan = sheetNameSpan; // 带了 id 的表名
+            if (idx > 0) sheetNameSpan = sheetNameSpan[..idx]; // 不带 id 的表名
 
             var programName = StringUtil.MatchProgramValidName(ref sheetNameSpan);
             var sName = programName.ToString();
             if (sName.StartsWith("__")) return null;
-            return string.IsNullOrWhiteSpace(sName) ? null : new TableInst(this, sName, fileName + ':' + sheetName);
+            return string.IsNullOrWhiteSpace(sName) ? null : new TableInst(this, fullSheetNameSpan.ToString(), fileName + ':' + sheetName);
         }
 
         public override void Clear()
         {
-            lock (_cfgs) _cfgs.Clear();
+            lock (_cfg) _cfg.Clear();
         }
 
         private void SetTableBreak(TableInst inst)
         {
-            lock (_cfgs)
+            lock (_cfg)
             {
-                if (!_cfgs.TryGetValue(inst.SheetName, out var table)) return;
+                if (!_cfg.TryGetValue(inst.SheetName, out var table)) return;
                 table.IsBreak = true;
             }
         }
-        
+
         private bool AddCfgField(TableInst inst, IEnumerable<FieldInfo> fields)
         {
             if (string.IsNullOrWhiteSpace(inst.SheetName)) Conf.Logger.Error("错误, 获得了空配置名");
             if (!StringUtil.IsProgramValidName(inst.SheetName)) Conf.Logger.Error($"错误, 获得了非法配置名{inst.SheetName}");
 
-            lock (_cfgs)
+            lock (_cfg)
             {
-                var cfgName = inst.SheetName;
-                if (!_cfgs.TryGetValue(cfgName, out var cfgInst))
+                var cfgName = ParseSheetName(inst.SheetName);
+                if (!_cfg.TryGetValue(cfgName.name, out var cfgInst))
                 {
-                    var ret = _cfgs.TryAdd(cfgName, cfgInst = new CombinedTableInst(cfgName));
+                    var ret = _cfg.TryAdd(cfgName.name, cfgInst = new CombinedTableInst(cfgName.name));
                     if (!ret)
                     {
                         Conf.Logger.Error($"尝试添加配置表失败, 表: {cfgName}");
@@ -96,7 +128,7 @@ namespace ConfImporter.Builtin
                     Conf.Logger.Warning($"被跳过的表: {cfgName}");
                     return false;
                 }
-                
+
                 // 检查 fields 匹配性
                 foreach (var info in fields)
                 {
@@ -114,25 +146,28 @@ namespace ConfImporter.Builtin
                         cfgInst.IsBreak = true;
                         return false;
                     }
-                    
+
                     CommonPostGen.AddType(info.Type!.Value, Conf);
                     cfgInst.Fields.Add(info.Name, info);
                 }
             }
             return true;
         }
-        
+
         private bool AddCfgRowData(TableInst inst, IEnumerable<(string Field, object? Value)> obj, CfgUtil.Id key)
         {
-            lock (_cfgs)
+            lock (_cfg)
             {
-                if (!_cfgs.TryGetValue(inst.SheetName, out var cfgInst))
+                var cfgName = ParseSheetName(inst.SheetName);
+                if (!_cfg.TryGetValue(cfgName.name, out var cfgInst))
                 {
                     Conf.Logger.Error($"错误! 插入数据失败, 找不到配置表字段信息: {inst.SheetName}");
                     return false;
                 }
 
-                if (cfgInst.Data.ContainsKey(key))
+                if (!cfgInst.Tables.TryGetValue(cfgName.id, out var tableInst))
+                    cfgInst.Tables.Add(cfgName.id, tableInst = new CombinedTableInst.CombinedTableSingleInst(cfgName.id));
+                if (tableInst.Data.ContainsKey(key))
                 {
                     Conf.Logger.Error($"错误! id 重复: {inst.SheetName}");
                     return false;
@@ -140,21 +175,29 @@ namespace ConfImporter.Builtin
 
                 var rowData = new CombinedTableInst.RowData(key);
                 rowData.Data.AddRange(obj);
-                cfgInst.DataList.Add(rowData);
-                cfgInst.Data.Add(key, rowData);
+                tableInst.DataList.Add(rowData);
+                tableInst.Data.Add(key, rowData);
             }
             return true;
         }
 
-        private readonly ConcurrentDictionary<string, CombinedTableInst> _cfgs = new();
+        private static (string name, string id) ParseSheetName(string? sheetName)
+        {
+            // sheet name format: "SheetTypeName|SheetId", "|SheetId" 可有可无
+            if (string.IsNullOrEmpty(sheetName)) return (string.Empty, string.Empty);
+            var sheetType = sheetName.AsSpan();
+            var name = StringUtil.MatchProgramValidName(ref sheetType);
+            return (name.ToString(), sheetType.Length > 1 ? sheetType[1..].ToString() : string.Empty);
+        }
+
+        private readonly ConcurrentDictionary<string, CombinedTableInst> _cfg = new();
 
         private class CombinedTableInst
         {
             // ReSharper disable once RedundantDefaultMemberInitializer
             public bool IsBreak { get; set; } = false;
             public string Name { get; }
-            public List<RowData> DataList { get; } = new();
-            public Dictionary<CfgUtil.Id, RowData> Data { get; } = new();
+            public Dictionary<string, CombinedTableSingleInst> Tables { get; } = new();
             public SortedDictionary<string, FieldInfo> Fields { get; } = new();
             public CombinedTableInst(string name) => Name = name;
 
@@ -162,11 +205,20 @@ namespace ConfImporter.Builtin
             {
                 public CfgUtil.Id Id { get; }
                 public List<(string Field, object? Value)> Data { get; } = new();
-                
+
                 public RowData(CfgUtil.Id id) => Id = id;
             }
+
+            public class CombinedTableSingleInst
+            {
+                public string Id { get; }
+                public List<RowData> DataList { get; } = new();
+                public Dictionary<CfgUtil.Id, RowData> Data { get; } = new();
+
+                public CombinedTableSingleInst(string id) => Id = id;
+            }
         }
-        
+
         private class TableInst : ITableInst
         {
             public string SheetName { get; }
@@ -192,7 +244,7 @@ namespace ConfImporter.Builtin
                 if (idx >= _fields.Count) return ITableInst.EFailOp.Success;
                 var field = _fields[idx];
                 if (!field.IsValid) return ITableInst.EFailOp.Success;
-                
+
                 var contentSpan = content.AsSpan();
                 try
                 {
@@ -202,7 +254,7 @@ namespace ConfImporter.Builtin
                         _dec.Conf.Logger.Error($"错误! 字段值内容解析失败, 表: {SheetName}, 字段名: {field.Name}-{content}, 字段行号 {_curRowIdx}, 字段列号: {idx}, 字段失配内容: {contentSpan.ToString()}");
                         return ITableInst.EFailOp.BreakTable;
                     }
-                    
+
                     // id 字段
                     if (field.Name == "Id")
                     {
@@ -212,7 +264,7 @@ namespace ConfImporter.Builtin
                             _dec.SetTableBreak(this);
                             return ITableInst.EFailOp.BreakTable;
                         }
-    
+
                         _curId = (CfgUtil.Id)data[0][0];
                         if (data.Length <= 0 || _curId.IsNull)
                         {
@@ -221,7 +273,7 @@ namespace ConfImporter.Builtin
                             return ITableInst.EFailOp.BreakTable;
                         }
                     }
-                    
+
                     var obj = Analyzer.ToObject(field.Type!.Value, data, _filters);
                     _rowData.Add((field.Name, obj));
                 }
@@ -241,7 +293,7 @@ namespace ConfImporter.Builtin
                     _dec.SetTableBreak(this);
                     return ITableInst.EFailOp.BreakTable;
                 }
-                
+
                 var ret = _dec.AddCfgRowData(this, _rowData, _curId);
                 if (!ret) _dec.Conf.Logger.Error($"添加行数据出错: 表: {SheetName}, 行: {_curRowIdx}, id: {_curId}");
                 return !ret ? ITableInst.EFailOp.BreakLine : ITableInst.EFailOp.Success;
@@ -249,7 +301,7 @@ namespace ConfImporter.Builtin
 
             private int _curRowIdx;
             private CfgUtil.Id _curId;
-            
+
             private readonly HashSet<AnyBase> _filters = new();
             private readonly List<(string Field, object? Value)> _rowData = new();
             #endregion
@@ -260,7 +312,7 @@ namespace ConfImporter.Builtin
                 if (rowIdx == 0) return ITableInst.EFailOp.Success;
                 for (var i = 0; i < rowHead.Count; i++)
                 {
-                    
+
                     if (cancellationToken.IsCancellationRequested) return ITableInst.EFailOp.Cancel;
 
                     var head = rowHead[i];
@@ -358,7 +410,7 @@ namespace ConfImporter.Builtin
                     _dec.SetTableBreak(this);
                     return ITableInst.EFailOp.BreakTable;
                 }
-                
+
                 // 处理字段名和字段类型
                 // ReSharper disable once PossibleMultipleEnumeration
                 var ret = _dec.AddCfgField(this, validFields);
@@ -390,7 +442,7 @@ namespace ConfImporter.Builtin
                 }
             }
             public string Name { get; set; } = string.Empty;
-            
+
             public string? TypeUniqueStr { get; private set; }
 
             public bool IsValid => !IsHidden && Type != null && !string.IsNullOrWhiteSpace(Name);

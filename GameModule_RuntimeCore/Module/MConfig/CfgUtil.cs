@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading.Tasks;
+using XD.Common.CollectionUtil;
 
 // ReSharper disable UnusedMember.Global
 // ReSharper disable NotAccessedField.Global
@@ -18,7 +19,8 @@ namespace XD.GameModule.Module.MConfig
     public static partial class CfgUtil
     {
         #region table
-        public static string? TablePath { internal get; set; }
+        public static bool IsAsyncLoad { get; set; }
+        public static string? TablePath { get; set; }
         public static GlobalTableCreateDelegate? GlobalTableCreateFunction { internal get; set; }
         public static CommonTableCreateDelegate? CommonTableCreateFunction { internal get; set; }
         public static Func<Task<byte[]>?>? GlobalTableReadFunction { internal get; set; }
@@ -40,20 +42,13 @@ namespace XD.GameModule.Module.MConfig
 
         public interface ITable<TV> : IReadOnlyDictionary<Id, TV>
         {
+            public string Id { get; }
             public TV[] ToArray();
         }
 
-        public abstract class Table
-        {
-            public abstract Type Type { get; }
-            public abstract string Name { get; }
-        }
-
-        public sealed class Table<TItem> : Table, ITable<TItem> where TItem : CfgTableItemBase
+        public sealed class Table<TItem> : ITable<TItem> where TItem : CfgTableItemBase
         {
             public enum EIdType : byte { None, String, Number }
-
-            public delegate TItem ItemConstructor(object? data);
 
             #region dict implementations
             public int Count => Items.Count;
@@ -66,48 +61,141 @@ namespace XD.GameModule.Module.MConfig
             public IEnumerator<KeyValuePair<Id, TItem>> GetEnumerator() => _dict.GetEnumerator();
             #endregion
 
-            public override Type Type => typeof(TItem);
-            public override string Name { get; }
+            public string Id { get; }
+            public Type Type => typeof(TItem);
+            public string Name => Group.Name;
             public TItem[] ToArray() => Items.ToArray();
             public IReadOnlyList<TItem> Items { get; }
-            public IReadOnlyList<string> Fields => _fields;
             public EIdType IdType => Items.Count > 0
                 ? Items[0].Id.IsNumId
                     ? EIdType.Number
                     : Items[0].Id.IsNull ? EIdType.None : EIdType.String
                 : EIdType.None;
+            public TableGroup<TItem> Group { get; }
 
-            public Table(ref SerializedData data, IDeserializeMethod method, IDeserializeMethod.ConstructorFunc<TItem> constructor, string name, string[] fields)
+            public Table(TableGroup<TItem> owner)
             {
-                Name = name;
-                if (!method.BeginTableScope(ref data, typeof(TItem)))
+                Group = owner;
+                Id = string.Empty;
+                Items = Array.Empty<TItem>();
+                _dict = new FakeDictionary<Id, TItem>();
+            }
+
+            public Table(TableGroup<TItem> owner, ref SerializedData data, IDeserializeMethod method, IDeserializeMethod.ConstructorFunc<TItem> constructor)
+            {
+                Group = owner;
+                var tableId = method.BeginTableScope(ref data, typeof(TItem), owner.Name);
+                if (tableId == null)
                 {
+                    Id = string.Empty;
                     Items = Array.Empty<TItem>();
-                    _fields = Array.Empty<string>();
                     _dict = new FakeDictionary<Id, TItem>();
                     method.EndTableScope(ref data);
                     return;
                 }
 
                 var list = method.ReadArray(ref data, constructor);
+                method.EndTableScope(ref data);
                 if (list == null)
                 {
+                    Id = string.Empty;
                     Items = Array.Empty<TItem>();
-                    _fields = Array.Empty<string>();
                     _dict = new FakeDictionary<Id, TItem>();
-                    method.EndTableScope(ref data);
                     return;
                 }
 
+                Id = tableId;
                 var dict = new Dictionary<Id, TItem>();
                 foreach (var item in list) dict[item!.Id] = item;
                 Items = list!;
                 _dict = dict;
-                _fields = fields;
             }
 
-            private readonly string[] _fields;
             private readonly IReadOnlyDictionary<Id, TItem> _dict;
+        }
+
+        public abstract class TableGroup
+        {
+            public abstract Type Type { get; }
+            public abstract string Name { get; }
+        }
+
+        // ReSharper disable once ClassNeverInstantiated.Global
+        public sealed class TableGroup<TItem> : TableGroup, IReadOnlyDictionary<string, Table<TItem>> where TItem : CfgTableItemBase
+        {
+            public Table<TItem> Default { get; }
+
+            public override string Name { get; }
+            public IReadOnlyList<string> Fields { get; }
+            public override Type Type => typeof(TItem);
+
+            public TableGroup(ref SerializedData data, IDeserializeMethod method, IDeserializeMethod.ConstructorFunc<TItem> constructor, string name, string[] fields)
+            {
+                Name = name;
+                Fields = fields;
+                var len = method.BeginTableGroupScope(ref data, typeof(TItem), name);
+                switch (len)
+                {
+                    case < 0:
+                        Default = new Table<TItem>(this);
+                        method.EndTableGroupScope(ref data, len);
+                        return;
+                    case 0:
+                        Default = new Table<TItem>(this, ref data, method, constructor);
+                        method.EndTableGroupScope(ref data, len);
+                        return;
+                }
+
+                _tableInstDict = new SortedDictionary<string, Table<TItem>>();
+                for (var idx = 0; idx < len; idx++)
+                {
+                    var table = new Table<TItem>(this, ref data, method, constructor);
+                    if (idx == 0) Default = table;
+                    _tableInstDict.TryAdd(table.Id, table);
+                }
+                method.EndTableGroupScope(ref data, len);
+                Default ??= _tableInstDict.First().Value;
+            }
+
+            public IEnumerator<KeyValuePair<string, Table<TItem>>> GetEnumerator()
+            {
+                if (_tableInstDict == null)
+                {
+                    yield return new KeyValuePair<string, Table<TItem>>(Default.Id, Default);
+                    yield break;
+                }
+                foreach (var v in _tableInstDict)
+                    yield return v;
+            }
+            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+            public int Count => _tableInstDict?.Count ?? 1;
+
+            public bool ContainsKey(string key)
+            {
+                if (_tableInstDict == null) return Default.Id == key;
+                return _tableInstDict.ContainsKey(key);
+            }
+            public bool TryGetValue(string key, out Table<TItem> value)
+            {
+                if (_tableInstDict != null) return _tableInstDict.TryGetValue(key, out value);
+                if (Default.Id == key)
+                {
+                    value = Default;
+                    return true;
+                }
+                value = null!;
+                return false;
+            }
+
+            public Table<TItem> this[string key] => _tableInstDict == null ? Default : _tableInstDict[key];
+            public IEnumerable<string> Keys => _tableInstDict == null
+                ? new SingleEnumerable<string>(Default.Id)
+                : _tableInstDict.Keys;
+            public IEnumerable<Table<TItem>> Values => _tableInstDict == null
+                ? new SingleEnumerable<Table<TItem>>()
+                : _tableInstDict.Values;
+            private readonly SortedDictionary<string, Table<TItem>>? _tableInstDict;
         }
 
         // ReSharper disable once InconsistentNaming

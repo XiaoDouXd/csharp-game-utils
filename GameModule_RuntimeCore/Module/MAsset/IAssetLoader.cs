@@ -5,6 +5,11 @@ using XD.Common.AsyncUtil;
 
 namespace XD.GameModule.Module.MAsset
 {
+    public interface IAssetTaskCreator<out TTask, T> where TTask : IAssetTask<T>
+    {
+        public TTask Create(string assetPath);
+    }
+
     public interface IAssetTask<out T> : IAwaiter<T>
     {
         public bool IsValid { get; }
@@ -13,15 +18,5 @@ namespace XD.GameModule.Module.MAsset
         public Exception? Exception { get; }
 
         public void Release();
-    }
-
-    public interface IAssetLoader
-    {
-        public TTask LoadAsset<TTask, T>(string assetPath) where TTask : IAssetTask<T>;
-    }
-
-    public static class AssetLoader
-    {
-        public static IAssetLoader? Loader { internal get; set; }
     }
 }

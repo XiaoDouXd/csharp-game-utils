@@ -59,11 +59,21 @@ namespace ConfImporter.Config
         /// 数据导出目标
         /// </summary>
         public string ByteOutputTargetDir { get; set; } = "./";
-        
+
         /// <summary>
         /// 代码导出目标
         /// </summary>
         public string CodeOutputTargetDir { get; set; } = "./";
+
+        /// <summary>
+        /// 名空间
+        /// </summary>
+        public string? CodeNamespace { get; set; } = null;
+
+        /// <summary>
+        /// 版本
+        /// </summary>
+        public long Version { get; set; } = 1;
 
         /// <summary>
         /// 收集配置表文件
@@ -125,8 +135,8 @@ namespace ConfImporter.Config
                         where sheet != null
                         from typeDec in TableDec.Type.TypeInfos
                         where typeDec != null
-                        where typeDec.CheckSheetName(sheet.Name, f.Name)
-                        let inst = typeDec.New(sheet.Name, f.Name)
+                        where typeDec.CheckSheetName(sheet.Name, f.Name, sheet)
+                        let inst = typeDec.New(sheet.Name, f.Name, sheet)
                         where inst != null
                         select new Sheet(sheet, f.Name, typeDec, inst)).ToList();
                     if (sheetList.Count <= 0) continue;
@@ -282,7 +292,7 @@ namespace ConfImporter.Config
                 _progress = 0;
                 _getProgress = null;
                 State = "Gen byte";
-                
+
                 for (var i = 0; i < TableDec.Type.TypeInfos.Count; i++)
                 {
                     _progress = (double)(i + _tables.Count) / (_tables.Count + TableDec.Type.TypeInfos.Count);

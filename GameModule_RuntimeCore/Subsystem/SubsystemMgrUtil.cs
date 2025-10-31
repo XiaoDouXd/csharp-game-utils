@@ -5,9 +5,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using XD.Common.Log;
 using XD.Common.ScopeUtil;
-using E = XD.GameModule.Module.E;
+using XD.GameModule.Module;
 
 // ReSharper disable UnusedType.Global
+// ReSharper disable UnusedMember.Global
+// ReSharper disable UnusedParameter.Local
 // ReSharper disable UnassignedField.Global
 // ReSharper disable MemberCanBeProtected.Global
 // ReSharper disable ClassNeverInstantiated.Global
@@ -23,7 +25,7 @@ namespace XD.GameModule.Subsystem
     [AttributeUsage(AttributeTargets.Class)]
     public sealed class SubsystemLazyAttribute : Attribute {}
     [AttributeUsage(AttributeTargets.Class)]
-    public sealed class SubsystemAttribute : Attribute { public sbyte Layer; }
+    public sealed class SubsystemAttribute : Attribute { public SubsystemAttribute(Type parent) {} public sbyte Layer; }
     [AttributeUsage(AttributeTargets.Field)]
     public sealed class SubsystemInstAttribute : Attribute { public sbyte Layer; }
     [AttributeUsage(AttributeTargets.Field)]

@@ -21,8 +21,8 @@ namespace XD.GameModule.Module.MConfig
 
         public readonly partial struct CommonTableCreateResult
         {
-            public readonly Table[]? Value;
-            public CommonTableCreateResult(Table[]? value) => Value = value;
+            public readonly TableGroup[]? Value;
+            public CommonTableCreateResult(TableGroup[]? value) => Value = value;
         }
 
         public readonly partial struct GlobalTableCreateResult
@@ -48,7 +48,10 @@ namespace XD.GameModule.Module.MConfig
             public long BeginScope(ref SerializedData data);
             public void EndScope(ref SerializedData data);
 
-            public bool BeginTableScope(ref SerializedData data, Type type, string? name = null);
+            public int BeginTableGroupScope(ref SerializedData data, Type type, string? name = null);
+            public void EndTableGroupScope(ref SerializedData data, int len);
+
+            public string? BeginTableScope(ref SerializedData data, Type type, string? name = null);
             public void EndTableScope(ref SerializedData data);
 
             public bool BeginItemScope(ref SerializedData data, Type type, string? name = null);

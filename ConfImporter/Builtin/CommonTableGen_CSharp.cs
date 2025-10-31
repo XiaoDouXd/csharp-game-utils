@@ -17,7 +17,7 @@ namespace ConfImporter.Builtin
         public override void GenCodes(CancellationToken c)
         {
             const string indent = "    ";
-            const string tableNamespace = "XD.A0.Game.Runtime.Config";
+            var tableNamespace = Conf.CodeNamespace ?? "XD.A0.Game.Runtime.Config";
             var sb = new StringBuilder();
             sb.Append($@"// ReSharper disable UnusedNullableDirective
 // ReSharper disable RedundantUsingDirective
@@ -27,7 +27,7 @@ namespace ConfImporter.Builtin
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using XD.A0.Engine.Runtime.Module.MConfig;
+using XD.GameModule.Module.MConfig;
 
 // ReSharper disable All
 // ReSharper disable InconsistentNaming
@@ -39,7 +39,7 @@ namespace {tableNamespace}
 ");
             var sbFunction = new StringBuilder();
             var sbTableCreator = new StringBuilder();
-            sbTableCreator.Append($@"{indent}{indent}{indent}var ret = new CfgUtil.Table[]
+            sbTableCreator.Append($@"{indent}{indent}{indent}var ret = new CfgUtil.TableGroup[]
 {indent}{indent}{indent}{{
 ");
             var sbTempA = new StringBuilder();
@@ -47,7 +47,7 @@ namespace {tableNamespace}
             var sbTempC = new StringBuilder();
 
             CombinedTableInst[]? cfgList;
-            lock (_cfgs) cfgList = _cfgs.Values.Where(inst => inst is { IsBreak: false, Fields: { Count: > 0 } }).ToArray();
+            lock (_cfg) cfgList = _cfg.Values.Where(inst => inst is { IsBreak: false, Fields: { Count: > 0 } }).ToArray();
             if (cfgList is not { Length: > 0 })
             {
                 using var fEmpty = File.Create(Conf.CodeOutputTargetDir + "/CfgGenTable.cs");
@@ -209,7 +209,7 @@ namespace {tableNamespace}
 
                 sbFunction.Append($"{indent}{indent}{indent}{indent}CfgUtil.____tableInfoCache<{tableName}>.Id = {tableIdx + 1};\n");
                 sbTableCreator.Append(
-                    $"{indent}{indent}{indent}{indent}new CfgUtil.Table<{tableName}>(ref data, method, CfgUtil.StructConstructorFuncUtils.Construct<{tableName}, {tableName}.____constructor>, \"{inst.Name}\", new []{{{sbTempC}}}),\n");
+                    $"{indent}{indent}{indent}{indent}new CfgUtil.TableGroup<{tableName}>(ref data, method, CfgUtil.StructConstructorFuncUtils.Construct<{tableName}, {tableName}.____constructor>, \"{inst.Name}\", new []{{{sbTempC}}}),\n");
                 tableIdx++;
             }
 
@@ -256,7 +256,7 @@ namespace {tableNamespace}
         public override void GenBytes(CancellationToken c)
         {
             CombinedTableInst[]? cfgList;
-            lock (_cfgs) cfgList = _cfgs.Values.Where(inst => inst is { IsBreak: false, Fields: { Count: > 0 } }).ToArray();
+            lock (_cfg) cfgList = _cfg.Values.Where(inst => inst is { IsBreak: false, Fields: { Count: > 0 } }).ToArray();
             if (cfgList is not { Length: > 0 })
             {
                 using var fEmpty = File.Create(Conf.ByteOutputTargetDir + "/CommonTable.bytes");
@@ -265,28 +265,56 @@ namespace {tableNamespace}
                 return;
             }
 
-            var table = new object[cfgList.Length + 1];
-            table[0] = 0; // version
+            var table = new List<object>{ Conf.Version };
             for (var idy = 1; idy <= cfgList.Length; idy++)
             {
                 var inst = cfgList[idy - 1];
                 var fields = inst.Fields;
                 var fieldCnt = FormatFieldIdx(fields);
-                var tableData = new object?[inst.DataList.Count];
-                for (var idx = 0; idx < inst.DataList.Count; idx++)
+                if (inst.Tables.Count <= 1)
                 {
-                    var rowData = inst.DataList[idx];
-                    var data = new object?[fieldCnt];
-                    foreach (var (fieldName, value) in rowData.Data)
+                    var t = inst.Tables.First();
+                    var tableData = new object?[t.Value.DataList.Count];
+                    for (var idx = 0; idx < t.Value.DataList.Count; idx++)
                     {
-                        if (!fields.TryGetValue(fieldName, out var v)) continue;
-                        data[v.Idx] = value;
+                        if (!string.IsNullOrEmpty(t.Key)) table.Add(t.Key);
+                        var rowData = t.Value.DataList[idx];
+                        var data = new object?[fieldCnt];
+                        foreach (var (fieldName, value) in rowData.Data)
+                        {
+                            if (!fields.TryGetValue(fieldName, out var v)) continue;
+                            data[v.Idx] = value;
+                        }
+                        tableData[idx] = data;
                     }
-                    tableData[idx] = data;
+                    table.Add(tableData);
                 }
-                table[idy] = tableData;
+                else
+                {
+                    var idz = 0;
+                    var tableGroup = new object[inst.Tables.Count * 2];
+                    foreach (var t in inst.Tables)
+                    {
+                        tableGroup[idz] = t.Key;
+                        var tableData = new object?[t.Value.DataList.Count];
+                        for (var idx = 0; idx < t.Value.DataList.Count; idx++)
+                        {
+                            var rowData = t.Value.DataList[idx];
+                            var data = new object?[fieldCnt];
+                            foreach (var (fieldName, value) in rowData.Data)
+                            {
+                                if (!fields.TryGetValue(fieldName, out var v)) continue;
+                                data[v.Idx] = value;
+                            }
+                            tableData[idx] = data;
+                        }
+                        tableGroup[idz + 1] = tableData;
+                        idz += 2;
+                    }
+                    table.Add(tableGroup);
+                }
             }
-            var bytes = MessagePackSerializer.Serialize(table);
+            var bytes = MessagePackSerializer.Serialize(table.ToArray());
             using var f = File.Create(Conf.ByteOutputTargetDir + "/CommonTable.bytes");
             f.Write(bytes);
             using var fJson = File.Create(Conf.ByteOutputTargetDir + "/CommonTable.json");

@@ -124,4 +124,37 @@ namespace XD.Common.CollectionUtil
 
         private (int beginIdx, int length) _slice;
     }
+
+    public readonly struct SingleEnumerable<T> : IEnumerable<T>
+    {
+        public SingleEnumerable(T value) => _value = value;
+
+        public SingleEnumerator GetEnumerator() => new(_value);
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+        IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
+
+        public struct SingleEnumerator : IEnumerator<T>
+        {
+            public SingleEnumerator(T value) => _value = value;
+            public bool MoveNext()
+            {
+                if (_idx != 0) return false;
+                return (_idx += 1) == 1;
+            }
+            public void Reset() => _idx = 0;
+
+            public T Current => _idx == 1 ? _value! : default!;
+            object? IEnumerator.Current => Current;
+            public void Dispose()
+            {
+                _idx = -1;
+                _value = default!;
+            }
+
+            private T _value;
+            private sbyte _idx = 0;
+        }
+
+        private readonly T _value;
+    }
 }

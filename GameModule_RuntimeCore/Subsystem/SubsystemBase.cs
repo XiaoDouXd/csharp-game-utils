@@ -9,7 +9,7 @@ namespace XD.GameModule.Subsystem
     public partial class SubsystemBase
     {
         public virtual void OnInitialize() {}
-        protected virtual void OnAsyncInitialize(CancellationTokenSource? cts) {}
+        public virtual void OnAsyncInitialize(CancellationTokenSource? cts) {}
         public virtual void OnUninitialize() {}
     }
 }

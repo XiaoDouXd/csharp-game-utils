@@ -21,8 +21,9 @@ namespace XD.GameModule.Module.MAsset
             return true;
         }
 
-        public IAssetHolder<T> Load<TTask, T>(string key, EAutoReleaseType relType = EAutoReleaseType.Immediately, float delay = DefaultDelayTime)
+        public IAssetHolder<T> Load<TTaskCreator, TTask, T>(string key, EAutoReleaseType relType = EAutoReleaseType.Immediately, float delay = DefaultDelayTime)
             where TTask : IAssetTask<T>
+            where TTaskCreator : struct, IAssetTaskCreator<TTask, T>
         {
             if (_assetHandles.TryGetValue(key, out var handle))
             {
@@ -34,8 +35,7 @@ namespace XD.GameModule.Module.MAsset
             }
 
             {
-                if (AssetLoader.Loader == null) return EmptyAssetHolder<T>.I;
-                var src = AssetLoader.Loader.LoadAsset<TTask, T>(key);
+                var src = default(TTaskCreator).Create(key);
                 // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
                 if (src == null || !src.IsValid) return EmptyAssetHolder<T>.I;
                 var newHandle = new AssetHandle<TTask, T>(src, this, new AssetHandle.AutoReleaseConf(relType, delay, key));

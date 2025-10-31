@@ -34,12 +34,8 @@ namespace XD.GameModule.Module.MConfig
 
                 options.Security.DepthStep(ref reader);
                 reader.ReadArrayHeader();
-                if (IsGlobal)
-                {
-                    return 1;
-                }
-                reader.ReadInt64();
-                return 1;
+                var version = reader.ReadInt64();
+                return version;
             }
 
             public void EndScope(ref SerializedData data)
@@ -47,7 +43,33 @@ namespace XD.GameModule.Module.MConfig
                 data.Reader.Depth--;
             }
 
-            public bool BeginTableScope(ref SerializedData data, Type type, string? _) => true;
+            public int BeginTableGroupScope(ref SerializedData data, Type type, string? name = null)
+            {
+                ref var reader = ref data.Reader;
+                var options = data.Options;
+                if (reader.TryReadNil()) return -1;
+                if (reader.NextMessagePackType != MessagePackType.Integer)
+                    return reader.NextMessagePackType is MessagePackType.String or MessagePackType.Array ? 0 : -1;
+
+                var len = reader.ReadInt32();
+                options.Security.DepthStep(ref reader);
+                var realLen = reader.ReadArrayHeader();
+                if (len == realLen && len > 0) return len;
+                reader.Depth--;
+                return -2;
+            }
+
+            public void EndTableGroupScope(ref SerializedData data, int len)
+            {
+                if (len > 0) data.Reader.Depth--;
+            }
+
+            public string BeginTableScope(ref SerializedData data, Type type, string? _)
+            {
+                ref var reader = ref data.Reader;
+                if (IsGlobal || reader.NextMessagePackType == MessagePackType.Array) return string.Empty;
+                return reader.ReadString() ?? string.Empty;
+            }
 
             public void EndTableScope(ref SerializedData data) {}
 

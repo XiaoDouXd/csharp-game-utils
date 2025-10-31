@@ -15,7 +15,19 @@ namespace SubsystemGenerator
     [Generator]
     public class SubsystemGenerator : ISourceGenerator
     {
-        private const string OutputNamespace = "XD.A0.Game.Runtime.Subsystems.Base";
+        private struct ClassTypeSymbol
+        {
+            // ReSharper disable NotAccessedField.Local
+            public INamedTypeSymbol Class;
+            public SemanticModel ClassModel;
+            public ClassDeclarationSyntax ClassSyntax;
+
+            public INamedTypeSymbol SubsystemAttr;
+            public INamedTypeSymbol LazySubsystemAttr;
+
+            public AttributeData SubsystemAttrData;
+            // ReSharper restore NotAccessedField.Local
+        }
 
         public void Initialize(GeneratorInitializationContext context)
         {
@@ -29,17 +41,43 @@ namespace SubsystemGenerator
             if (context.SyntaxReceiver is not SubsystemSyntaxReceiver receiver)
                 return;
 
+            var symbol = new ClassTypeSymbol
+            {
+                SubsystemAttr = context.Compilation.GetTypeByMetadataName("XD.GameModule.Subsystem.SubsystemAttribute")!,
+                LazySubsystemAttr = context.Compilation.GetTypeByMetadataName("XD.GameModule.Subsystem.SubsystemLazyAttribute")!
+            };
+
+            if (symbol.SubsystemAttr == null || symbol.LazySubsystemAttr == null)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    new DiagnosticDescriptor("SG002", "Generation Error",
+                        $"Code generation failed: can't find subsystem attributes", "Subsystem",
+                        DiagnosticSeverity.Warning, true),
+                    Location.None));
+                return;
+            }
+
             foreach (var classDecl in receiver.CandidateClasses)
             {
                 var model = context.Compilation.GetSemanticModel(classDecl.SyntaxTree);
-                if (!IsValidSubsystemClass(classDecl, model)) continue;
-                GenerateRegistrationCode(context, classDecl, model);
+                symbol.ClassModel = model;
+                symbol.ClassSyntax = classDecl;
+                symbol.Class = model.GetDeclaredSymbol(classDecl)!;
+                if (symbol.Class == null) continue;
+
+                var attrData = HasSubsystemAttribute(symbol.Class, symbol.SubsystemAttr);
+                if (attrData == null) continue;
+                symbol.SubsystemAttrData = attrData;
+                GenerateRegistrationCode(context, symbol);
             }
         }
 
-        private static bool IsValidSubsystemClass(ClassDeclarationSyntax classDecl, SemanticModel model)
+        private static ITypeSymbol? GetParentTypeFromAttribute(AttributeData attr)
         {
-            return HasSubsystemAttribute(classDecl, model, "XD.GameModule.Subsystem.SubsystemAttribute.SubsystemAttribute()");
+            if (attr.ConstructorArguments.Length > 0 &&
+                attr.ConstructorArguments[0].Value is ITypeSymbol symbol)
+                return symbol;
+            return null;
         }
 
         private static bool InheritsSubsystemBase(ClassDeclarationSyntax classDecl, SemanticModel model)
@@ -55,23 +93,19 @@ namespace SubsystemGenerator
                 c.Parameters.Length == 0 && c.DeclaredAccessibility == Accessibility.Public) ?? false;
         }
 
-        private static bool HasSubsystemAttribute(ClassDeclarationSyntax classDecl, SemanticModel model, string attributeName)
+        private static AttributeData? HasSubsystemAttribute(INamedTypeSymbol classSymbol, INamedTypeSymbol attrSymbol)
         {
-            foreach (var attributeList in classDecl.AttributeLists)
+            foreach (var attr in classSymbol.GetAttributes())
             {
-                foreach (var attribute in attributeList.Attributes)
-                {
-                    var attributeSymbol = model.GetSymbolInfo(attribute).Symbol;
-                    if (attributeSymbol?.ToString() != attributeName) continue;
-                        return true;
-                }
+                if (attr.AttributeClass?.Equals(attrSymbol, SymbolEqualityComparer.Default) ?? false)
+                    return attr;
             }
-            return false;
+            return null;
         }
 
-        private static void GenerateRegistrationCode(GeneratorExecutionContext context, ClassDeclarationSyntax classDecl, SemanticModel model)
+        private static void GenerateRegistrationCode(GeneratorExecutionContext context, in ClassTypeSymbol symbol)
         {
-            if (!InheritsSubsystemBase(classDecl, model))
+            if (!InheritsSubsystemBase(symbol.ClassSyntax, symbol.ClassModel))
             {
                 context.ReportDiagnostic(Diagnostic.Create(
                     new DiagnosticDescriptor("SG001", "Generation Error",
@@ -81,29 +115,50 @@ namespace SubsystemGenerator
                 return;
             }
 
-            if (!HasParameterlessConstructor(classDecl, model))
+            if (!HasParameterlessConstructor(symbol.ClassSyntax, symbol.ClassModel))
             {
                 context.ReportDiagnostic(Diagnostic.Create(
                     new DiagnosticDescriptor("SG001", "Generation Error",
                         $"Code generation failed: subsystem must have parameter-less constructor", "Subsystem",
                         DiagnosticSeverity.Error, true),
-                    Location.None));
+                    symbol.ClassSyntax.Identifier.GetLocation()));
                 return;
             }
 
             try
             {
                 // 3. 获取类元数据
-                var className = classDecl.Identifier.Text;
+                var className = symbol.ClassSyntax.Identifier.Text;
                 var instName = "____subsystem_g_" + className;
 
-                var ns = GetNamespace(classDecl);
-                var layerValue = GetLayerValue(classDecl);
+                var ns = GetNamespace(symbol.ClassSyntax);
+                var layerValue = GetLayerValue(symbol.ClassSyntax);
+                var isLazy = HasSubsystemAttribute(symbol.Class, symbol.LazySubsystemAttr) != null;
 
-                var isLazy = HasSubsystemAttribute(classDecl, model, "XD.GameModule.Subsystem.SubsystemLazyAttribute.SubsystemLazyAttribute()");
+                var parenType = GetParentTypeFromAttribute(symbol.SubsystemAttrData);
+                if (parenType == null)
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        new DiagnosticDescriptor("SG002", "Generation Error",
+                            $"Code generation failed: parse parent type failed", "Subsystem",
+                            DiagnosticSeverity.Error, true),
+                        symbol.ClassSyntax.Identifier.GetLocation()));
+                    return;
+                }
+
+                if (!parenType.IsStatic)
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        new DiagnosticDescriptor("SG003", "Generation Error",
+                            $"Code generation failed: parent type is not static, {parenType.ToDisplayString()}", "Subsystem",
+                            DiagnosticSeverity.Error, true),
+                        symbol.ClassSyntax.Identifier.GetLocation()));
+                    return;
+                }
 
                 // 4. 构建注册代码
-                var code = isLazy ? $@"namespace {OutputNamespace}
+                var opNamespace = parenType.ContainingNamespace.ToDisplayString();
+                var code = isLazy ? $@"namespace {opNamespace}
 {{
     public static partial class Sys
     {{
@@ -131,7 +186,7 @@ namespace SubsystemGenerator
             }}
         }}
     }}
-}}" : $@"namespace {OutputNamespace}
+}}" : $@"namespace {opNamespace}
 {{
     public static partial class Sys
     {{
@@ -148,9 +203,9 @@ namespace SubsystemGenerator
             {
                 context.ReportDiagnostic(Diagnostic.Create(
                     new DiagnosticDescriptor("SG001", "Generation Error",
-                        $"Code generation failed: {ex.Message}", "Subsystem",
+                        $"Code generation failed: {ex.Message}, stack:\n{ex.StackTrace}", "Subsystem",
                         DiagnosticSeverity.Error, true),
-                    Location.None));
+                    symbol.ClassSyntax.GetLocation()));
             }
         }
 
@@ -169,10 +224,10 @@ namespace SubsystemGenerator
                 foreach (var attribute in attributeList.Attributes)
                 {
                     if (attribute.Name.ToString() != "Subsystem") continue;
-                    if (attribute.ArgumentList != null)
-                        return int.Parse(attribute.ArgumentList.Arguments
-                            .First(a => a.NameEquals?.Name.Identifier.Text == "Layer")
-                            .Expression.ToString());
+                    if (attribute.ArgumentList == null) continue;
+                    var layer = attribute.ArgumentList.Arguments
+                        .FirstOrDefault(a => a.NameEquals?.Name.Identifier.Text == "Layer");
+                    return layer == null ? 0 : int.Parse(layer.Expression.ToString());
                 }
             }
             return 0;

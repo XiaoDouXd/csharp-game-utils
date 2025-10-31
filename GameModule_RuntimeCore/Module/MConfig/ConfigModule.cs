@@ -103,7 +103,30 @@ namespace XD.GameModule.Module.MConfig
             if (_tableList == null) return false;
             var tableId = CfgUtil.____tableInfoCache<T>.Id;
             if (tableId <= 0  || tableId - 1 >= _tableList.Length) return false;
-            return _tableList[tableId - 1] is CfgUtil.Table<T> table && table.ContainsKey(id);
+            return _tableList[tableId - 1] is CfgUtil.TableGroup<T> table && table.Default.ContainsKey(id);
+        }
+
+        public CfgUtil.TableGroup<T>? GetGroup<T>() where T : CfgUtil.CfgTableItemBase
+        {
+            if (_tableList == null) return null;
+            var id = CfgUtil.____tableInfoCache<T>.Id;
+            if (id <= 0 || id - 1 >= _tableList.Length) return null;
+            return _tableList[id - 1] as CfgUtil.TableGroup<T>;
+        }
+
+        public bool TryGetGroup<T>(out CfgUtil.TableGroup<T>? value) where T : CfgUtil.CfgTableItemBase
+        {
+            if (_tableList == null)
+            {
+                value = null;
+                return false;
+            }
+
+            var id = CfgUtil.____tableInfoCache<T>.Id;
+            if (id > 0 && id - 1 < _tableList.Length)
+                return (value = _tableList[id - 1] as CfgUtil.TableGroup<T>) != null;
+            value = null;
+            return false;
         }
 
         public CfgUtil.Table<T>? Get<T>() where T : CfgUtil.CfgTableItemBase
@@ -111,7 +134,7 @@ namespace XD.GameModule.Module.MConfig
             if (_tableList == null) return null;
             var id = CfgUtil.____tableInfoCache<T>.Id;
             if (id <= 0 || id - 1 >= _tableList.Length) return null;
-            return _tableList[id - 1] as CfgUtil.Table<T>;
+            return (_tableList[id - 1] as CfgUtil.TableGroup<T>)?.Default;
         }
 
         public bool TryGet<T>(out CfgUtil.Table<T>? value) where T : CfgUtil.CfgTableItemBase
@@ -128,7 +151,8 @@ namespace XD.GameModule.Module.MConfig
                 value = null;
                 return false;
             }
-            value = _tableList[id - 1] as CfgUtil.Table<T>;
+            var group = _tableList[id - 1] as CfgUtil.TableGroup<T>;
+            value = group?.Default;
             return value != null;
         }
 
@@ -137,7 +161,7 @@ namespace XD.GameModule.Module.MConfig
             if (_tableList == null) return null;
             var tableId = CfgUtil.____tableInfoCache<T>.Id;
             if (tableId <= 0  || tableId - 1 >= _tableList.Length) return null;
-            if (_tableList[tableId - 1] is not CfgUtil.Table<T> table || !table.TryGetValue(id, out var value))
+            if (_tableList[tableId - 1] is not CfgUtil.TableGroup<T> table || !table.Default.TryGetValue(id, out var value))
                 return null;
             return value;
         }
@@ -150,13 +174,13 @@ namespace XD.GameModule.Module.MConfig
                 return false;
             }
             var tableId = CfgUtil.____tableInfoCache<T>.Id;
-            if (tableId > 0 && tableId - 1 < _tableList.Length && _tableList[tableId - 1] is CfgUtil.Table<T> table)
-                return table.TryGetValue(id, out value);
+            if (tableId > 0 && tableId - 1 < _tableList.Length && _tableList[tableId - 1] is CfgUtil.TableGroup<T> table)
+                return table.Default.TryGetValue(id, out value);
             value = null;
             return false;
         }
 
-        private CfgUtil.Table?[]? _tableList;
+        private CfgUtil.TableGroup?[]? _tableList;
         #endregion
 
         #region init
@@ -169,7 +193,11 @@ namespace XD.GameModule.Module.MConfig
                 {
                     globalLoader = Task.Run(async () =>
                     {
-                        await E.Tick?.Register(new TickTask())!;
+                        if (!CfgUtil.IsAsyncLoad)
+                        {
+                            var task = E.Tick?.Register(new TickTask());
+                            if (task != null) await task;
+                        }
                         using var h = CfgUtil.GlobalTableReadFunction();
                         return h != null
                             ? MessagePackSerializer.Deserialize<CfgUtil.GlobalTableCreateResult>(await h)
@@ -182,6 +210,11 @@ namespace XD.GameModule.Module.MConfig
                 {
                     commonLoader = Task.Run((Func<Task>)(async () =>
                     {
+                        if (!CfgUtil.IsAsyncLoad)
+                        {
+                            var task = E.Tick?.Register(new TickTask());
+                            if (task != null) await task;
+                        }
                         using var h = CfgUtil.CommonTableReadFunction();
                         _tableList = h != null ? MessagePackSerializer.Deserialize<CfgUtil.CommonTableCreateResult>(await h).Value : null;
                     }), token);
@@ -205,6 +238,11 @@ namespace XD.GameModule.Module.MConfig
                 {
                     localizationLoader = Task.Run(async () =>
                     {
+                        if (!CfgUtil.IsAsyncLoad)
+                        {
+                            var task = E.Tick?.Register(new TickTask());
+                            if (task != null) await task;
+                        }
                         using var h = CfgUtil.LocalizationTableReadFunction();
                         var obj = h != null ? MessagePackSerializer.Typeless.Deserialize(await h) : null;
                         if (obj is object[] { Length: > 0 } i18nData)

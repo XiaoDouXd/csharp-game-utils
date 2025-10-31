@@ -12,6 +12,24 @@ using OfficeOpenXml;
 
 namespace ConfImporter.Table
 {
+     public readonly struct SheetReader : ISheetReader
+     {
+          public SheetReader(ExcelWorksheet sheet) => _sheet = sheet;
+          public string Read(int row, int col)
+          {
+               var cell = _sheet?.Cells[row - 1, col - 1];
+               if (cell == null) return string.Empty;
+               return cell.Value?.ToString() ?? string.Empty;
+          }
+          public static implicit operator SheetReader(ExcelWorksheet sheet) => new(sheet);
+          private readonly ExcelWorksheet? _sheet;
+     }
+
+     public interface ISheetReader
+     {
+          public string Read(int row, int col);
+     }
+
      internal class Sheet : IDisposable
      {
           public enum EFailOp : byte

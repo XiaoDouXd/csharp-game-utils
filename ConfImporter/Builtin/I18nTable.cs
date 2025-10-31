@@ -7,6 +7,7 @@ using System.Threading;
 using ConfImporter.Builtin.Util;
 using ConfImporter.Builtin.Util.Gen;
 using ConfImporter.Config;
+using ConfImporter.Table;
 using MessagePack;
 
 #region ReSharper disable
@@ -21,7 +22,7 @@ namespace ConfImporter.Builtin
 {
     public class I18nTable : TableTypeDec
     {
-        public override bool CheckSheetName(string sheetName, string fileName)
+        public override bool CheckSheetName(string sheetName, string fileName, in SheetReader reader)
         {
             var sheetNameSpan = sheetName.AsSpan();
 
@@ -39,7 +40,7 @@ namespace ConfImporter.Builtin
             return !programName.IsEmpty && fileName.ToLower().StartsWith("i18n-");
         }
 
-        public override ITableInst? New(string sheetName, string fileName)
+        public override ITableInst? New(string sheetName, string fileName, in SheetReader reader)
         {
             var sheetNameSpan = sheetName.AsSpan();
 

@@ -1,8 +1,11 @@
-﻿using System.IO;
+﻿using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Text;
 using ConfImporter.Builtin.Type;
 using ConfImporter.Builtin.Util;
 using System.Threading;
+using MessagePack;
 
 // ReSharper disable once CheckNamespace
 namespace ConfImporter.Builtin
@@ -23,7 +26,7 @@ namespace ConfImporter.Builtin
             }
 
             const string indent = "    ";
-            const string tableNamespace = "XD.A0.Game.Runtime.Config";
+            var tableNamespace = Conf.CodeNamespace ?? "XD.A0.Game.Runtime.Config";
             var sb = new StringBuilder();
             var sbDef = new StringBuilder();
             var sbConstruct = new StringBuilder();
@@ -38,7 +41,7 @@ namespace ConfImporter.Builtin
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using XD.A0.Engine.Runtime.Module.MConfig;
+using XD.GameModule.Module.MConfig;
 
 // ReSharper disable All
 // ReSharper disable InconsistentNaming
@@ -109,7 +112,7 @@ namespace {tableNamespace}
                     sb.Append('\n');
                     sb.Append(sbDef);
                     sb.Append($"{indent}{indent}{indent}internal static void ____constructor(ref CfgUtil.SerializedData data, CfgUtil.IDeserializeMethod method)\n{indent}{indent}{indent}{{\n");
-                    sb.Append($"{indent}{indent}{indent}{indent}if (!method.BeginTableScope(ref data, typeof({name}), nameof({name}))) {{ method.EndTableScope(ref data); return; }}\n");
+                    sb.Append($"{indent}{indent}{indent}{indent}if (method.BeginTableScope(ref data, typeof({name}), nameof({name})) != null) {{ method.EndTableScope(ref data); return; }}\n");
                     sb.Append(sbConstruct);
                     sb.Append($"{indent}{indent}{indent}{indent}method.EndTableScope(ref data);\n{indent}{indent}{indent}}}\n{indent}{indent}}}\n");
                     sbFunction.Append($"{indent}{indent}{indent}G.{name}.____constructor(ref data, method);\n");
@@ -161,6 +164,30 @@ namespace {tableNamespace}
                     return CSharpGenUtil.GetFieldType(info.ValType, TypeInfo.ETypeFlag.None, isId);
                 var ret = info.GetTypeIdentity(sbA, sbB);
                 return ret;
+            }
+        }
+
+        public override void GenBytes(CancellationToken c)
+        {
+            lock (_tables)
+            {
+                if (_tables.Count <= 0)
+                {
+                    using var fEmpty = File.Create(Conf.ByteOutputTargetDir + "/GlobalTable.bytes");
+                    using var fWriterEmpty = new StreamWriter(fEmpty);
+                    fWriterEmpty.Write("");
+                    return;
+                }
+
+                var objList = new List<object>{ Conf.Version };
+                foreach (var table in _tables.Values)
+                    objList.AddRange(table.Values.Select(field => field.Data));
+                var bytes = MessagePackSerializer.Serialize(objList);
+                using var f = File.Create(Conf.ByteOutputTargetDir + "/GlobalTable.bytes");
+                f.Write(bytes);
+                using var fJson = File.Create(Conf.ByteOutputTargetDir + "/GlobalTable.json");
+                using var fJsonWriter = new StreamWriter(fJson);
+                fJsonWriter.Write(MessagePackSerializer.ConvertToJson(bytes));
             }
         }
     }
