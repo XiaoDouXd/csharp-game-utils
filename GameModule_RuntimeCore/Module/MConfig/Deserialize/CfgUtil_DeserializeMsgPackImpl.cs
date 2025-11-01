@@ -54,7 +54,7 @@ namespace XD.GameModule.Module.MConfig
                 var len = reader.ReadInt32();
                 options.Security.DepthStep(ref reader);
                 var realLen = reader.ReadArrayHeader();
-                if (len == realLen && len > 0) return len;
+                if (len * 2 == realLen && len > 0) return len;
                 reader.Depth--;
                 return -2;
             }

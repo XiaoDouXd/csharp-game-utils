@@ -108,24 +108,24 @@ namespace ConfImporter.Builtin
         private bool AddCfgField(TableInst inst, IEnumerable<FieldInfo> fields)
         {
             if (string.IsNullOrWhiteSpace(inst.SheetName)) Conf.Logger.Error("错误, 获得了空配置名");
-            if (!StringUtil.IsProgramValidName(inst.SheetName)) Conf.Logger.Error($"错误, 获得了非法配置名{inst.SheetName}");
+            var cfgName = ParseSheetName(inst.SheetName);
+            if (!StringUtil.IsProgramValidName(cfgName.name)) Conf.Logger.Error($"错误, 获得了非法配置名{inst.SheetName}");
 
             lock (_cfg)
             {
-                var cfgName = ParseSheetName(inst.SheetName);
                 if (!_cfg.TryGetValue(cfgName.name, out var cfgInst))
                 {
                     var ret = _cfg.TryAdd(cfgName.name, cfgInst = new CombinedTableInst(cfgName.name));
                     if (!ret)
                     {
-                        Conf.Logger.Error($"尝试添加配置表失败, 表: {cfgName}");
+                        Conf.Logger.Error($"尝试添加配置表失败, 表: {inst.SheetName}");
                         return false;
                     }
                 }
 
                 if (cfgInst.IsBreak)
                 {
-                    Conf.Logger.Warning($"被跳过的表: {cfgName}");
+                    Conf.Logger.Warning($"被跳过的表: {inst.SheetName}");
                     return false;
                 }
 
@@ -134,7 +134,7 @@ namespace ConfImporter.Builtin
                 {
                     if (!info.IsValid)
                     {
-                        Conf.Logger.Error($"不合法的字段! 表: {cfgName}, 字段: {info.Name}");
+                        Conf.Logger.Error($"不合法的字段! 表: {inst.SheetName}, 字段: {info.Name}");
                         cfgInst.IsBreak = true;
                         return false;
                     }
@@ -142,7 +142,7 @@ namespace ConfImporter.Builtin
                     if (cfgInst.Fields.TryGetValue(info.Name, out var field))
                     {
                         if (field.TypeUniqueStr == info.TypeUniqueStr) continue;
-                        Conf.Logger.Error($"字段类型冲突! 表: {cfgName}, 字段: {info.Name}, 类型: {info.TypeUniqueStr}/{field.TypeUniqueStr}");
+                        Conf.Logger.Error($"字段类型冲突! 表: {inst.SheetName}, 字段: {info.Name}, 类型: {info.TypeUniqueStr}/{field.TypeUniqueStr}");
                         cfgInst.IsBreak = true;
                         return false;
                     }
@@ -169,7 +169,7 @@ namespace ConfImporter.Builtin
                     cfgInst.Tables.Add(cfgName.id, tableInst = new CombinedTableInst.CombinedTableSingleInst(cfgName.id));
                 if (tableInst.Data.ContainsKey(key))
                 {
-                    Conf.Logger.Error($"错误! id 重复: {inst.SheetName}");
+                    Conf.Logger.Error($"错误! id 重复: {inst.SheetName}, id: {key}");
                     return false;
                 }
 
@@ -203,6 +203,7 @@ namespace ConfImporter.Builtin
 
             public class RowData
             {
+                // ReSharper disable once UnusedAutoPropertyAccessor.Local
                 public CfgUtil.Id Id { get; }
                 public List<(string Field, object? Value)> Data { get; } = new();
 
@@ -211,6 +212,7 @@ namespace ConfImporter.Builtin
 
             public class CombinedTableSingleInst
             {
+                // ReSharper disable once UnusedAutoPropertyAccessor.Local
                 public string Id { get; }
                 public List<RowData> DataList { get; } = new();
                 public Dictionary<CfgUtil.Id, RowData> Data { get; } = new();

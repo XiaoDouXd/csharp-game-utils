@@ -12,6 +12,7 @@ using OfficeOpenXml;
 
 // ReSharper disable once CheckNamespace
 // ReSharper disable MemberCanBePrivate.Global
+// ReSharper disable ClassNeverInstantiated.Global
 // ReSharper disable UnusedAutoPropertyAccessor.Global
 
 namespace ConfImporter.Config

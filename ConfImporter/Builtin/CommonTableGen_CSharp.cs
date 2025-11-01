@@ -31,7 +31,7 @@ using XD.GameModule.Module.MConfig;
 
 // ReSharper disable All
 // ReSharper disable InconsistentNaming
-#pragma warning disable CS8618, CS9264
+#pragma warning disable CS8618, CS9264, CS8631
 
 // ReSharper disable once CheckNamespace
 namespace {tableNamespace}
@@ -103,7 +103,7 @@ namespace {tableNamespace}
 {indent}{indent}{indent}switch (name)
 {indent}{indent}{indent}{{
 ");
-                sbConstructorStruct.Append($@"{indent}public readonly struct ____constructor : CfgUtil.IConstructor<____constructor, {tableName}>
+                sbConstructorStruct.Append($@"{indent}public readonly struct ____constructor : CfgUtil.IConstructor<____constructor, {tableName}?>
 {indent}{indent}{{
 {indent}{indent}{indent}public {tableName}? Construct(ref CfgUtil.SerializedData data, CfgUtil.IDeserializeMethod method, string? name)
 {indent}{indent}{indent}{{
@@ -209,7 +209,7 @@ namespace {tableNamespace}
 
                 sbFunction.Append($"{indent}{indent}{indent}{indent}CfgUtil.____tableInfoCache<{tableName}>.Id = {tableIdx + 1};\n");
                 sbTableCreator.Append(
-                    $"{indent}{indent}{indent}{indent}new CfgUtil.TableGroup<{tableName}>(ref data, method, CfgUtil.StructConstructorFuncUtils.Construct<{tableName}, {tableName}.____constructor>, \"{inst.Name}\", new []{{{sbTempC}}}),\n");
+                    $"{indent}{indent}{indent}{indent}new CfgUtil.TableGroup<{tableName}?>(ref data, method, CfgUtil.StructConstructorFuncUtils.Construct<{tableName}?, {tableName}.____constructor>, \"{inst.Name}\", new []{{{sbTempC}}}),\n");
                 tableIdx++;
             }
 
@@ -275,9 +275,9 @@ namespace {tableNamespace}
                 {
                     var t = inst.Tables.First();
                     var tableData = new object?[t.Value.DataList.Count];
+                    if (!string.IsNullOrEmpty(t.Key)) table.Add(t.Key);
                     for (var idx = 0; idx < t.Value.DataList.Count; idx++)
                     {
-                        if (!string.IsNullOrEmpty(t.Key)) table.Add(t.Key);
                         var rowData = t.Value.DataList[idx];
                         var data = new object?[fieldCnt];
                         foreach (var (fieldName, value) in rowData.Data)
@@ -293,6 +293,7 @@ namespace {tableNamespace}
                 {
                     var idz = 0;
                     var tableGroup = new object[inst.Tables.Count * 2];
+                    table.Add(inst.Tables.Count);
                     foreach (var t in inst.Tables)
                     {
                         tableGroup[idz] = t.Key;
