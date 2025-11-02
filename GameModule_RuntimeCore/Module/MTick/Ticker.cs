@@ -6,6 +6,7 @@ using XD.Common.ScopeUtil;
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable UnusedAutoPropertyAccessor.Global
 // ReSharper disable ConvertConstructorToMemberInitializers
+// ReSharper disable ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
 
 namespace XD.GameModule.Module.MTick
 {

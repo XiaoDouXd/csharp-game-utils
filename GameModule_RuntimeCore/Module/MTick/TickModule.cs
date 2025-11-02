@@ -21,7 +21,9 @@ namespace XD.GameModule.Module.MTick
 
         public sealed class TickFuncHandle : IPolling, IDisposableWithFlag
         {
+            // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
             public bool IsDisposed => E.Tick == null || !E.Tick.Contains(this);
+            // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
             public void Dispose() => E.Tick?.Unregister(this);
         }
 

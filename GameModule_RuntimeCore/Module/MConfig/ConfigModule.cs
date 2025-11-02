@@ -195,6 +195,7 @@ namespace XD.GameModule.Module.MConfig
                     {
                         if (!CfgUtil.IsAsyncLoad)
                         {
+                            // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
                             var task = E.Tick?.Register(new TickTask());
                             if (task != null) await task;
                         }
@@ -212,6 +213,7 @@ namespace XD.GameModule.Module.MConfig
                     {
                         if (!CfgUtil.IsAsyncLoad)
                         {
+                            // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
                             var task = E.Tick?.Register(new TickTask());
                             if (task != null) await task;
                         }
@@ -240,6 +242,7 @@ namespace XD.GameModule.Module.MConfig
                     {
                         if (!CfgUtil.IsAsyncLoad)
                         {
+                            // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
                             var task = E.Tick?.Register(new TickTask());
                             if (task != null) await task;
                         }

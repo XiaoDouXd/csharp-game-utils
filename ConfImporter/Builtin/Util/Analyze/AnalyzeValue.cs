@@ -258,7 +258,7 @@ namespace ConfImporter.Builtin.Util
         }
 
         /// <summary>
-        /// 吞下 id, id 的结构为 ITEM_INDEX:TABLE_INDEX, 其中 ITEM_INDEX 为表项主键, TABLE_INDEX 为表名
+        /// 吞下 id, id 的结构为 ITEM_INDEX-TABLE_INDEX, 其中 ITEM_INDEX 为表项主键, TABLE_INDEX 为表名
         /// </summary>
         /// <param name="str"></param>
         /// <returns></returns>

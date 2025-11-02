@@ -18,6 +18,7 @@ namespace XD.GameModule.Module.MEvent
             _eventMap.Clear();
             _listenerMap.Clear();
 
+            // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
             if (E.Tick == null) return (IProcedure.EndType.Abort, new ArgumentNullException(nameof(E.Tick)));
             E.Tick.OnTickDirect += OnTick;
             return IProcedure.RetInfo.Success;
@@ -25,6 +26,7 @@ namespace XD.GameModule.Module.MEvent
 
         private IProcedure.RetInfo DeInit()
         {
+            // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
             if (E.Tick != null) E.Tick.OnTickDirect -= OnTick;
             return IProcedure.RetInfo.Success;
         }

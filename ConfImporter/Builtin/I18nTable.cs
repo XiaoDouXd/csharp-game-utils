@@ -104,7 +104,7 @@ namespace ConfImporter.Builtin
             lock (_tables) _tables.Clear();
         }
 
-        private void AddSentence(string table, string  key, string value, CfgUtil.ELocaleCode language)
+        private void AddSentence(string table, string  key, string value, ELocaleCode language)
         {
             if (string.IsNullOrWhiteSpace(table) || string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value))
                 return;
@@ -145,7 +145,7 @@ namespace ConfImporter.Builtin
                         continue;
                     }
 
-                    if (!Enum.TryParse<CfgUtil.ELocaleCode>(head, out var language))
+                    if (!Enum.TryParse<ELocaleCode>(head, out var language))
                         continue;
                     _languages[i] = language;
                 }
@@ -189,7 +189,7 @@ namespace ConfImporter.Builtin
 
             private int _keyIdx = -1;
             private readonly string _name;
-            private readonly SortedDictionary<int, CfgUtil.ELocaleCode> _languages = new();
+            private readonly SortedDictionary<int, ELocaleCode> _languages = new();
         }
 
         private readonly struct TableData
@@ -203,6 +203,6 @@ namespace ConfImporter.Builtin
                 Data = new Dictionary<string, string>();
             }
         }
-        private readonly Dictionary<CfgUtil.ELocaleCode, Dictionary<string, TableData>> _tables = new ();
+        private readonly Dictionary<ELocaleCode, Dictionary<string, TableData>> _tables = new ();
     }
 }

@@ -51,6 +51,7 @@ namespace XD.GameModule.Module.MAsset
 
         internal override IProcedure InitProcedure() => new ProcedureSync(() =>
         {
+            // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
             if (E.Tick == null) return (IProcedure.EndType.Abort, new ArgumentNullException(nameof(E.Tick)));
             E.Tick.Register(_delayDriver);
             return IProcedure.RetInfo.Success;
@@ -62,6 +63,7 @@ namespace XD.GameModule.Module.MAsset
             _assetHandles.Clear();
             _delayDriver.Dispose();
             _delayDriver = new TickDelayDriver();
+            // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
             E.Tick?.Register(_delayDriver);
             return IProcedure.RetInfo.Success;
         });

@@ -17,7 +17,7 @@ namespace ConfImporter.Table
           public SheetReader(ExcelWorksheet sheet) => _sheet = sheet;
           public string Read(int row, int col)
           {
-               var cell = _sheet?.Cells[row - 1, col - 1];
+               var cell = _sheet?.Cells[row + 1, col + 1];
                if (cell == null) return string.Empty;
                return cell.Value?.ToString() ?? string.Empty;
           }

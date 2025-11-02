@@ -144,6 +144,7 @@ namespace XD.GameModule.Module.MEvent
             public override void Dispose()
             {
                 if (IsDisposed) return;
+                // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
                 E.Event?.Unregister(this);
                 OnDisposed();
             }

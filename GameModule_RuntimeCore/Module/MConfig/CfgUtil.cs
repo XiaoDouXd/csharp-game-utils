@@ -20,7 +20,6 @@ namespace XD.GameModule.Module.MConfig
     {
         #region table
         public static bool IsAsyncLoad { get; set; }
-        public static string? TablePath { get; set; }
         public static GlobalTableCreateDelegate? GlobalTableCreateFunction { internal get; set; }
         public static CommonTableCreateDelegate? CommonTableCreateFunction { internal get; set; }
         public static Func<Task<byte[]>?>? GlobalTableReadFunction { internal get; set; }
@@ -40,16 +39,25 @@ namespace XD.GameModule.Module.MConfig
             }
         }
 
-        public interface ITable<TV> : IReadOnlyDictionary<Id, TV>
+        public interface ITable
         {
-            public string Id { get; }
-            public TV[] ToArray();
+            public enum EIdType : byte { None, String, Number }
+
+            public string? Id { get; }
+            public Type Type { get; }
+            public string? Name { get; }
+            public EIdType IdType { get; }
+            public TableGroup? GroupBase { get; }
+        }
+
+        public interface ITable<TV> : IReadOnlyDictionary<Id, TV>, ITable
+        {
+            public TV[]? ToArray();
+            public IReadOnlyList<TV>? Items { get; }
         }
 
         public sealed class Table<TItem> : ITable<TItem> where TItem : CfgTableItemBase
         {
-            public enum EIdType : byte { None, String, Number }
-
             #region dict implementations
             public int Count => Items.Count;
             public IEnumerable<Id> Keys => _dict.Keys;
@@ -66,11 +74,12 @@ namespace XD.GameModule.Module.MConfig
             public string Name => Group.Name;
             public TItem[] ToArray() => Items.ToArray();
             public IReadOnlyList<TItem> Items { get; }
-            public EIdType IdType => Items.Count > 0
+            public ITable.EIdType IdType => Items.Count > 0
                 ? Items[0].Id.IsNumId
-                    ? EIdType.Number
-                    : Items[0].Id.IsNull ? EIdType.None : EIdType.String
-                : EIdType.None;
+                    ? ITable.EIdType.Number
+                    : Items[0].Id.IsNull ? ITable.EIdType.None : ITable.EIdType.String
+                : ITable.EIdType.None;
+            TableGroup ITable.GroupBase => Group;
             public TableGroup<TItem> Group { get; }
 
             public Table(TableGroup<TItem> owner)
@@ -217,7 +226,7 @@ namespace XD.GameModule.Module.MConfig
         }
         #endregion
 
-        #region base value
+        #region builtin types
         public readonly struct Id : IEquatable<Id>, IComparable<Id>
         {
             public readonly long Num;
@@ -352,46 +361,6 @@ namespace XD.GameModule.Module.MConfig
             public static implicit operator Link(string? value) => new(value);
             public static implicit operator string(Link self) => self.Str;
             public static implicit operator long(Link self) => self.Num;
-        }
-
-        // ReSharper disable once NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
-        public static string ToString(object? data) => Convert.ToString(data) ?? "";
-        public static string? ToStringNullable(object? data) => data == null ? null : Convert.ToString(data);
-        public static byte? ToByteNullable(object? data) => data == null ? null : Convert.ToByte(data);
-        public static sbyte? ToSByteNullable(object? data) => data == null ? null : Convert.ToSByte(data);
-        public static short? ToShortNullable(object? data) => data == null ? null : Convert.ToInt16(data);
-        public static ushort? ToUShortNullable(object? data) => data == null ? null : Convert.ToUInt16(data);
-        public static int? ToIntNullable(object? data) => data == null ? null : Convert.ToInt32(data);
-        public static uint? ToUIntNullable(object? data) => data == null ? null : Convert.ToUInt32(data);
-        public static long? ToLongNullable(object? data) => data == null ? null : Convert.ToInt64(data);
-        public static ulong? ToULongNullable(object? data) => data == null ? null : Convert.ToUInt64(data);
-        public static float? ToFloatNullable(object? data) => data == null ? null : Convert.ToSingle(data);
-        public static double? ToDoubleNullable(object? data) => data == null ? null : Convert.ToDouble(data);
-        public static bool? ToBooleanNullable(object? data) => data == null ? null : Convert.ToBoolean(data);
-
-        public static T[]? ToList<T>(object? data, Func<object?, T> constructor)
-        {
-            if (data == null) return null;
-            if (data is not object?[] { Length: > 0 } list) return Array.Empty<T>();
-            var arr = new T[list.Length];
-            for (var i = 0; i < list.Length; i++)
-                arr[i] = constructor(list[i]);
-            return arr;
-        }
-
-        public static IReadOnlyDictionary<TKey, TValue>? ToDict<TKey, TValue>(object? data, Func<object?, TKey> keyConstructor, Func<object?, TValue> valueConstructor)
-            where TKey : notnull
-        {
-            if (data == null) return null;
-            if (data is not object?[] { Length: > 1 } list) return new FakeDictionary<TKey, TValue>();
-            var dict = new Dictionary<TKey, TValue>();
-            for (var i = 0; i + 1 < list.Length; i += 2)
-            {
-                var k = keyConstructor(list[i]);
-                var value = valueConstructor(list[i + 1]);
-                dict.Add(k, value);
-            }
-            return dict;
         }
 
         public class FakeDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>

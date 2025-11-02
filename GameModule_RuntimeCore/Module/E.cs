@@ -3,6 +3,8 @@ using XD.GameModule.Module.MConfig;
 using XD.GameModule.Module.MEvent;
 using XD.GameModule.Module.MTick;
 
+#pragma warning disable CS8618
+
 // ReSharper disable UnusedMember.Global
 // ReSharper disable UnassignedField.Global
 // ReSharper disable UnusedAutoPropertyAccessor.Local
@@ -16,24 +18,24 @@ namespace XD.GameModule.Module
         /// 轮询模块
         /// </summary>
         [EngineModule(1)]
-        public static TickModule? Tick { get; private set; }
+        public static TickModule Tick { get; private set; }
 
         /// <summary>
         /// 事件模块
         /// </summary>
         [EngineModule(2)]
-        public static EventModule? Event { get; private set; }
+        public static EventModule Event { get; private set; }
 
         /// <summary>
         /// 资源模块
         /// </summary>
         [EngineModule(2)]
-        public static AssetModule? Asset { get; private set; }
+        public static AssetModule Asset { get; private set; }
 
         /// <summary>
         /// 配置模块
         /// </summary>
         [EngineModule(3)]
-        public static ConfigModule? Cfg { get; private set; }
+        public static ConfigModule Cfg { get; private set; }
     }
 }

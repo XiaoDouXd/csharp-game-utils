@@ -413,28 +413,16 @@ namespace ConfImporter.Builtin.Type
             _ => self._i.ToString()
         };
 
-        public static explicit operator CfgUtil.Link(AnyBase self) => self.TypeCode switch
+        public static explicit operator Id(AnyBase self) => self.TypeCode switch
         {
             ETypeCode.Null => default,
-            ETypeCode.String => new CfgUtil.Link(self._s),
-            // ReSharper disable SpecifyACultureInStringConversionExplicitly
-            ETypeCode.Float32 => new CfgUtil.Link(self._f.ToString()),
-            ETypeCode.Float64 => new CfgUtil.Link(self._d.ToString()),
-            // ReSharper restore SpecifyACultureInStringConversionExplicitly
-            ETypeCode.UInt64 => new CfgUtil.Link(self._i),
-            _ => new CfgUtil.Link(self._i)
-        };
-
-        public static explicit operator CfgUtil.Id(AnyBase self) => self.TypeCode switch
-        {
-            ETypeCode.Null => default,
-            ETypeCode.String => new CfgUtil.Id(self._s),
+            ETypeCode.String => new Id(self._s),
             // ReSharper disable SpecifyACultureInStringConversionExplicitly
             ETypeCode.Float32 => default,
             ETypeCode.Float64 => default,
             // ReSharper restore SpecifyACultureInStringConversionExplicitly
-            ETypeCode.UInt64 => new CfgUtil.Id(self._i),
-            _ => new CfgUtil.Id(self._i)
+            ETypeCode.UInt64 => new Id(self._i),
+            _ => new Id(self._i)
         };
 
         [Pure]

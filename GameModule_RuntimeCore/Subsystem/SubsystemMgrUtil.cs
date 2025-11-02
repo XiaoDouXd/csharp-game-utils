@@ -51,6 +51,7 @@ namespace XD.GameModule.Subsystem
                         taskList.Add(Task.Run(() => sys.OnAsyncInitializeBase(ctx)));
                     }
                 }
+                // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
                 E.Event?.BroadcastFrameAsync(ESubsystemLifecycleEvent.OnSubsystemInitializationFinished, sysGroup);
                 await Task.WhenAll(taskList);
                 E.Event?.BroadcastFrameAsync(ESubsystemLifecycleEvent.OnSubsystemAsyncInitializeFinished, sysGroup);

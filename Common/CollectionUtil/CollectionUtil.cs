@@ -225,8 +225,6 @@ namespace XD.Common.CollectionUtil
         public static SafeReadOnlyList<T> ToSafe<T>(this IReadOnlyList<T> self, T? defaultValue = default) =>
             new(self, defaultValue);
 
-        public delegate TR ToNativeArraySelector<T, out TR>(in T self) where TR : struct where T : struct;
-
         /// <summary>
         ///
         /// </summary>

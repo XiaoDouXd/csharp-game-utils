@@ -27,9 +27,9 @@ namespace ConfImporter.Builtin
             sheetNameSpan = sheetNameSpan[(idx + 1)..];
             StringUtil.TrimHead(ref sheetNameSpan);
             idx = StringUtil.FindFirst(sheetNameSpan, '>');
-            if (idx <= 0) return false;
+            if (idx < 0) return false;
             sheetNameSpan = sheetNameSpan[..idx];
-            if (sheetNameSpan.Length == 1 && sheetNameSpan[0] == '*')
+            if (sheetNameSpan.Length == 0)
             {
                 sheetNameSpan = reader.Read(0, 0).AsSpan();
                 StringUtil.TrimHead(ref sheetNameSpan);
@@ -66,9 +66,9 @@ namespace ConfImporter.Builtin
             sheetNameSpan = sheetNameSpan[(idx + 1)..];
             StringUtil.TrimHead(ref sheetNameSpan);
             idx = StringUtil.FindFirst(sheetNameSpan, '>');
-            if (idx <= 0) return null;
+            if (idx < 0) return null;
             sheetNameSpan = sheetNameSpan[..idx];
-            if (sheetNameSpan.Length == 1 && sheetNameSpan[0] == '*')
+            if (sheetNameSpan.Length == 0)
             {
                 sheetNameSpan = reader.Read(0, 0).AsSpan();
                 StringUtil.TrimHead(ref sheetNameSpan);
@@ -154,7 +154,7 @@ namespace ConfImporter.Builtin
             return true;
         }
 
-        private bool AddCfgRowData(TableInst inst, IEnumerable<(string Field, object? Value)> obj, CfgUtil.Id key)
+        private bool AddCfgRowData(TableInst inst, IEnumerable<(string Field, object? Value)> obj, Id key)
         {
             lock (_cfg)
             {
@@ -204,10 +204,10 @@ namespace ConfImporter.Builtin
             public class RowData
             {
                 // ReSharper disable once UnusedAutoPropertyAccessor.Local
-                public CfgUtil.Id Id { get; }
+                public Id Id { get; }
                 public List<(string Field, object? Value)> Data { get; } = new();
 
-                public RowData(CfgUtil.Id id) => Id = id;
+                public RowData(Id id) => Id = id;
             }
 
             public class CombinedTableSingleInst
@@ -215,7 +215,7 @@ namespace ConfImporter.Builtin
                 // ReSharper disable once UnusedAutoPropertyAccessor.Local
                 public string Id { get; }
                 public List<RowData> DataList { get; } = new();
-                public Dictionary<CfgUtil.Id, RowData> Data { get; } = new();
+                public Dictionary<Id, RowData> Data { get; } = new();
 
                 public CombinedTableSingleInst(string id) => Id = id;
             }
@@ -267,7 +267,7 @@ namespace ConfImporter.Builtin
                             return ITableInst.EFailOp.BreakTable;
                         }
 
-                        _curId = (CfgUtil.Id)data[0][0];
+                        _curId = (Id)data[0][0];
                         if (data.Length <= 0 || _curId.IsNull)
                         {
                             _dec.Conf.Logger.Error($"错误! Id 为空, 表: {SheetName}, 行: {_curRowIdx}");
@@ -302,7 +302,7 @@ namespace ConfImporter.Builtin
             }
 
             private int _curRowIdx;
-            private CfgUtil.Id _curId;
+            private Id _curId;
 
             private readonly HashSet<AnyBase> _filters = new();
             private readonly List<(string Field, object? Value)> _rowData = new();

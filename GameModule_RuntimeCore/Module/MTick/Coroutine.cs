@@ -27,18 +27,30 @@ namespace XD.GameModule.Module.MTick
         public ICoroutineInterface Coro => _coroutineInterface;
 
         /// <summary> 协程句柄 </summary>
-        public interface ICoroutineHandle : IAwaiter, IAwaitable<ICoroutineHandle> {}
+        public interface ICoroutineHandle : IAwaiter, IAwaitable<ICoroutineHandle>
+        {
+            // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
+            public bool Cancel() => E.Tick?.Coro.Del(this) ?? false;
+        }
 
         public interface ICoroutineInterface
         {
             /// <summary>
-            /// 运行一个协程
+            /// 运行一个协程, 协程返回值为 double, 表示等待时间, 单位秒
             /// <example> var registerHandle = UpdateModule.Coroutine.Run(coroutine); </example>
             /// </summary>
             /// <param name="coroutineGenerator"> 协程生成函数 </param>
             /// <param name="type"> 协程调用时机 </param>
             /// <returns> 协程删除句柄 registerHandle </returns>
             public ICoroutineHandle? Run(Func<IEnumerator<double>?> coroutineGenerator, ECoroutineType type = ECoroutineType.Tick);
+
+            /// <summary>
+            /// 运行一个协程, 协程返回值为 double, 表示等待时间, 单位秒
+            /// </summary>
+            /// <param name="coroutine"> 协程 </param>
+            /// <param name="type"> 协程调用时机 </param>
+            /// <returns> 协程删除句柄 registerHandle </returns>
+            public ICoroutineHandle? Run(IEnumerator<double>? coroutine, ECoroutineType type = ECoroutineType.Tick);
 
             /// <summary>
             /// 在一个协程结束或销毁之后运行一个协程
@@ -48,6 +60,16 @@ namespace XD.GameModule.Module.MTick
             /// <param name="type"> 新协程调用时机 </param>
             /// <returns></returns>
             public ICoroutineHandle? RunAfter(ICoroutineHandle? registerHandle, Func<IEnumerator<double>?>? coroutineGenerator,
+                ECoroutineType type = ECoroutineType.Tick);
+
+            /// <summary>
+            /// 在一个协程结束或销毁之后运行一个协程
+            /// </summary>
+            /// <param name="registerHandle"> 协程删除句柄 registerHandle </param>
+            /// <param name="coroutine"> 协程 </param>
+            /// <param name="type"> 新协程调用时机 </param>
+            /// <returns></returns>
+            public ICoroutineHandle? RunAfter(ICoroutineHandle? registerHandle, IEnumerator<double>? coroutine,
                 ECoroutineType type = ECoroutineType.Tick);
 
             /// <summary>
@@ -85,19 +107,25 @@ namespace XD.GameModule.Module.MTick
         private sealed class CoroutineInterface : ICoroutineInterface
         {
             public ICoroutineHandle? Run(Func<IEnumerator<double>?>? coroutineGenerator, ECoroutineType type = ECoroutineType.Tick)
+                => Run(coroutineGenerator?.Invoke(), type);
+
+            public ICoroutineHandle? Run(IEnumerator<double>? coroutine, ECoroutineType type = ECoroutineType.Tick)
             {
-                var task = new Task(coroutineGenerator?.Invoke());
+                var task = new Task(coroutine);
                 lock (task.Node) return !task.Do(0) ? null : RunImmInner(task, type);
             }
 
             public ICoroutineHandle? RunAfter(ICoroutineHandle? registerHandle, Func<IEnumerator<double>?>? coroutineGenerator, ECoroutineType type = ECoroutineType.Tick)
+                => RunAfter(registerHandle, coroutineGenerator?.Invoke(), type);
+
+            public ICoroutineHandle? RunAfter(ICoroutineHandle? registerHandle, IEnumerator<double>? coroutine, ECoroutineType type = ECoroutineType.Tick)
             {
                 if (registerHandle is not Task targetTask) return null;
                 lock (targetTask)
                 {
                     if (_waitingTasks.TryGetValue(targetTask, out _))
                     {
-                        var task = new Task(coroutineGenerator?.Invoke());
+                        var task = new Task(coroutine);
                         var act = (Action)(() =>
                         {
                             if (!_waitingTasks.TryRemove(task, out _)) return;
@@ -113,7 +141,7 @@ namespace XD.GameModule.Module.MTick
                     {
                         if (targetTask.Node.List == _tickTasks)
                         {
-                            var task = new Task(coroutineGenerator?.Invoke());
+                            var task = new Task(coroutine);
                             if (targetTask.IsCompleted) isImmRun = true;
                             else
                             {
@@ -131,13 +159,13 @@ namespace XD.GameModule.Module.MTick
 
                     if (isImmRun)
                     {
-                        var task = new Task(coroutineGenerator?.Invoke());
+                        var task = new Task(coroutine);
                         return !task.Do(0) ? null : RunImmInner(task, type);
                     }
 
                     lock (_lateTickTasks)
                     {
-                        var task = new Task(coroutineGenerator?.Invoke());
+                        var task = new Task(coroutine);
                         if (targetTask.IsCompleted) isImmRun = true;
                         else
                         {
@@ -154,13 +182,13 @@ namespace XD.GameModule.Module.MTick
 
                     if (isImmRun)
                     {
-                        var task = new Task(coroutineGenerator?.Invoke());
+                        var task = new Task(coroutine);
                         return !task.Do(0) ? null : RunImmInner(task, type);
                     }
 
                     lock (_physicalTickTasks)
                     {
-                        var task = new Task(coroutineGenerator?.Invoke());
+                        var task = new Task(coroutine);
                         if (targetTask.IsCompleted) isImmRun = true;
                         else
                         {
@@ -177,7 +205,7 @@ namespace XD.GameModule.Module.MTick
 
                     if (!isImmRun) return null;
                     {
-                        var task = new Task(coroutineGenerator?.Invoke());
+                        var task = new Task(coroutine);
                         return !task.Do(0) ? null : RunImmInner(task, type);
                     }
                 }
