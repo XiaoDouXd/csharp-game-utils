@@ -96,11 +96,14 @@ namespace XD.Common.Event
             if (!EventMap.TryGetValue(eventId, out var handlerLinkedList)) return false;
             var handlerBase = handlerLinkedList.Count > 0 ? handlerLinkedList.First : null;
             var deletedOne = false;
-            while (handlerBase != null)
+            lock (EventMap)
             {
-                var next = handlerBase.Next;
-                deletedOne |= UnregisterListenerInner(handlerBase.Value, eventId);
-                handlerBase = next;
+                while (handlerBase != null)
+                {
+                    var next = handlerBase.Next;
+                    deletedOne |= UnregisterListenerInner(handlerBase.Value, eventId);
+                    handlerBase = next;
+                }
             }
             return deletedOne;
 
