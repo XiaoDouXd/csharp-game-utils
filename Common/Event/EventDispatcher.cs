@@ -59,7 +59,7 @@ namespace XD.Common.Event
             {
                 if (IsDisposed || Dispatcher.IsDisposed) return;
                 // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
-                Dispatcher.Unregister(this);
+                Dispatcher.Unregister(Id, this);
                 OnDisposed();
             }
         }
