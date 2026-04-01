@@ -52,9 +52,9 @@ namespace XD.GameModule.Subsystem
                     }
                 }
                 // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
-                E.Event?.BroadcastFrameAsync(ESubsystemLifecycleEvent.OnSubsystemInitializationFinished, sysGroup);
+                E.Event?.I.BroadcastFrameAsync(ESubsystemLifecycleEvent.OnSubsystemInitializationFinished, sysGroup);
                 await Task.WhenAll(taskList);
-                E.Event?.BroadcastFrameAsync(ESubsystemLifecycleEvent.OnSubsystemAsyncInitializeFinished, sysGroup);
+                E.Event?.I.BroadcastFrameAsync(ESubsystemLifecycleEvent.OnSubsystemAsyncInitializeFinished, sysGroup);
             }
             catch (Exception e)
             {
