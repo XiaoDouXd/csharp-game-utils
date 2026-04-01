@@ -11,16 +11,14 @@ namespace XD.Common
         public static unsafe long AsLong<TEnum>(this TEnum enumValue)
             where TEnum : unmanaged, Enum
         {
-            long value;
-            if (sizeof(TEnum) == sizeof(byte))
-                value = *(byte*)&enumValue;
-            else if (sizeof(TEnum) == sizeof(short))
-                value = *(short*)&enumValue;
-            else if (sizeof(TEnum) == sizeof(int))
-                value = *(int*)&enumValue;
-            else if (sizeof(TEnum) == sizeof(long))
-                value = *(long*)&enumValue;
-            else throw new Exception("type mismatch");
+            var value = sizeof(TEnum) switch
+            {
+                sizeof(byte) => *(byte*)&enumValue,
+                sizeof(short) => *(short*)&enumValue,
+                sizeof(int) => *(int*)&enumValue,
+                sizeof(long) => *(long*)&enumValue,
+                _ => throw new Exception("type mismatch")
+            };
             return value;
         }
 
@@ -42,6 +40,21 @@ namespace XD.Common
             return ret;
         }
         private static readonly Dictionary<Type, bool> CachedTypes = new();
+
+        public static bool IsBuiltinValueTypeBox<TBox>() where TBox : IValueBox
+        {
+            return typeof(TBox) == typeof(U8Box) ||
+                   typeof(TBox) == typeof(I8Box) ||
+                   typeof(TBox) == typeof(U16Box) ||
+                   typeof(TBox) == typeof(I16Box) ||
+                   typeof(TBox) == typeof(U32Box) ||
+                   typeof(TBox) == typeof(I32Box) ||
+                   typeof(TBox) == typeof(U64Box) ||
+                   typeof(TBox) == typeof(I64Box) ||
+                   typeof(TBox) == typeof(F32Box) ||
+                   typeof(TBox) == typeof(F64Box) ||
+                   typeof(TBox) == typeof(StringBox);
+        }
     }
 
     public interface IValueBox
@@ -59,11 +72,21 @@ namespace XD.Common
         public void FromF32(float value) {}
         public void FromF64(double value) {}
         public void FromString(string value) {}
+        public void FromObject(object value) {}
     }
 
     public interface IValueBox<out T> : IValueBox
     {
         public T Value { get; }
+    }
+
+    public struct ObjectBox<T> : IValueBox<T>
+    {
+        public Type Type => typeof(T);
+        public T Value { get; private set; }
+        public ObjectBox(T value) => Value = value;
+        public override string ToString() => Value?.ToString() ?? string.Empty;
+        public void FromObject(object value) => Value = (T)value;
     }
 
     public struct StringBox : IValueBox<string>
@@ -73,6 +96,8 @@ namespace XD.Common
         public string Value { get; private set; } = string.Empty;
         public override string ToString() => Value;
         public void FromString(string value) => Value = value;
+        public void FromObject(object value) => Value = value as string ?? value.ToString();
+
         public void FromBool(bool value) => Value = value.ToString();
         public void FromU8(byte value) => Value = value.ToString();
         public void FromI8(sbyte value) => Value = value.ToString();
@@ -104,6 +129,7 @@ namespace XD.Common
         public void FromF32(float value) => Value = (byte)value;
         public void FromF64(double value) => Value = (byte)value;
         public void FromString(string value) => Value = byte.Parse(value);
+        public void FromObject(object value) => Value = value as byte? ?? 0;
     }
 
     public struct I8Box : IValueBox<sbyte>
@@ -124,6 +150,7 @@ namespace XD.Common
         public void FromF32(float value) => Value = (sbyte)value;
         public void FromF64(double value) => Value = (sbyte)value;
         public void FromString(string value) => Value = sbyte.Parse(value);
+        public void FromObject(object value) => Value = value as sbyte? ?? 0;
     }
 
     public struct U16Box : IValueBox<ushort>
@@ -144,6 +171,7 @@ namespace XD.Common
         public void FromF32(float value) => Value = (ushort)value;
         public void FromF64(double value) => Value = (ushort)value;
         public void FromString(string value) => Value = ushort.Parse(value);
+        public void FromObject(object value) => Value = value as ushort? ?? 0;
     }
 
     public struct I16Box : IValueBox<short>
@@ -164,6 +192,7 @@ namespace XD.Common
         public void FromF32(float value) => Value = (short)value;
         public void FromF64(double value) => Value = (short)value;
         public void FromString(string value) => Value = short.Parse(value);
+        public void FromObject(object value) => Value = value as short? ?? 0;
     }
 
     public struct U32Box : IValueBox<uint>
@@ -184,6 +213,7 @@ namespace XD.Common
         public void FromF32(float value) => Value = (uint)value;
         public void FromF64(double value) => Value = (uint)value;
         public void FromString(string value) => Value = uint.Parse(value);
+        public void FromObject(object value) => Value = value as uint? ?? 0;
     }
 
     public struct I32Box : IValueBox<int>
@@ -204,6 +234,7 @@ namespace XD.Common
         public void FromF32(float value) => Value = (int)value;
         public void FromF64(double value) => Value = (int)value;
         public void FromString(string value) => Value = int.Parse(value);
+        public void FromObject(object value) => Value = value as int? ?? 0;
     }
 
     public struct U64Box : IValueBox<ulong>
@@ -224,6 +255,7 @@ namespace XD.Common
         public void FromF32(float value) => Value = (ulong)value;
         public void FromF64(double value) => Value = (ulong)value;
         public void FromString(string value) => Value = ulong.Parse(value);
+        public void FromObject(object value) => Value = value as ulong? ?? 0;
     }
 
     public struct I64Box : IValueBox<long>
@@ -244,6 +276,7 @@ namespace XD.Common
         public void FromF32(float value) => Value = (long)value;
         public void FromF64(double value) => Value = (long)value;
         public void FromString(string value) => Value = long.Parse(value);
+        public void FromObject(object value) => Value = value as long? ?? 0;
     }
 
     public struct BoolBox : IValueBox<bool>
@@ -264,5 +297,48 @@ namespace XD.Common
         public void FromF32(float value) => Value = value != 0;
         public void FromF64(double value) => Value = value != 0;
         public void FromString(string value) => Value = bool.Parse(value);
+        public void FromObject(object value) => Value = value as bool? ?? false;
+    }
+
+    public struct F32Box : IValueBox<float>
+    {
+        public Type Type => typeof(float);
+        public F32Box() {}
+        public float Value { get; private set; }
+        public override string ToString() => Value.ToString(CultureInfo.InvariantCulture);
+        public void FromBool(bool value) => Value = value ? 1 : 0;
+        public void FromU8(byte value) => Value = value;
+        public void FromI8(sbyte value) => Value = value;
+        public void FromU16(ushort value) => Value = value;
+        public void FromI16(short value) => Value = value;
+        public void FromU32(uint value) => Value = value;
+        public void FromI32(int value) => Value = value;
+        public void FromU64(ulong value) => Value = value;
+        public void FromI64(long value) => Value = value;
+        public void FromF32(float value) => Value = value;
+        public void FromF64(double value) => Value = (float)value;
+        public void FromString(string value) => Value = float.Parse(value);
+        public void FromObject(object value) => Value = value as float? ?? 0;
+    }
+
+    public struct F64Box : IValueBox<double>
+    {
+        public Type Type => typeof(double);
+        public F64Box() {}
+        public double Value { get; private set; }
+        public override string ToString() => Value.ToString(CultureInfo.InvariantCulture);
+        public void FromBool(bool value) => Value = value ? 1 : 0;
+        public void FromU8(byte value) => Value = value;
+        public void FromI8(sbyte value) => Value = value;
+        public void FromU16(ushort value) => Value = value;
+        public void FromI16(short value) => Value = value;
+        public void FromU32(uint value) => Value = value;
+        public void FromI32(int value) => Value = value;
+        public void FromU64(ulong value) => Value = value;
+        public void FromI64(long value) => Value = value;
+        public void FromF32(float value) => Value = value;
+        public void FromF64(double value) => Value = value;
+        public void FromString(string value) => Value = double.Parse(value);
+        public void FromObject(object value) => Value = value as double? ?? 0;
     }
 }
