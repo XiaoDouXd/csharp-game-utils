@@ -8,29 +8,34 @@ using XD.Common.ScopeUtil;
 namespace XD.Common.Event
 {
     // ReSharper disable UnusedMember.Global
+    // ReSharper disable VirtualMemberNeverOverridden.Global
     public partial class EventDispatcher
     {
-        public static class EventParams
+        protected virtual T? UnpackParam<T>(IReadOnlyList<ParamPack> paramPacks, int idx)
         {
-            public static T? Get<T>(IReadOnlyList<ParamPack> paramPacks, int idx)
-            {
-                if (idx >= paramPacks.Count || idx < 0) return default;
-                return paramPacks[idx].GetValue<T>();
-            }
+            if (idx >= paramPacks.Count || idx < 0) return default;
+            return paramPacks[idx].GetValue<T>();
         }
+        protected virtual ParamPack PackParam<T>(T? obj) => ParamPack.Create(obj);
+        protected virtual void DisposeParamPack(ref ParamPack paramPack) => paramPack.Dispose();
 
         /// <summary> 参数包 </summary>
         public struct ParamPack : IDisposableWithFlag
         {
             public bool IsDisposed => _type == null;
+            public string ExtInfo => _extInfo ?? string.Empty;
+
             private IntPtr _valuePtr;
-            private Type? _type;
-            private object? _valueObj;
             private bool _isUnmanaged;
 
-            public static ParamPack Create<T>(T data)
+            private Type? _type;
+            private object? _valueObj;
+            private string? _extInfo;
+
+            public static ParamPack Create<T>(T data, string? extInfo = null)
             {
                 var ret = new ParamPack();
+                ret._extInfo = extInfo;
                 if (data == null) return ret;
 
                 // 确定是否为非托管类型
@@ -72,60 +77,62 @@ namespace XD.Common.Event
 
         #region task list
 
-        public int MaxTaskListCache
+        public static int MaxTaskListCache
         {
             get => _maxTaskListCache;
             set
             {
                 _maxTaskListCache = value;
-                _taskListPool.Clear();
+                TaskListPool.Clear();
             }
         }
 
-        private int _maxTaskListCache = 100;
+        private static int _maxTaskListCache = 100;
 
-        protected List<EventHandlerBase> NewTaskList() =>
-            _taskListPool.TryPop(out var v) ? v : new List<EventHandlerBase>();
+        protected static List<EventHandlerBase> NewTaskList() =>
+            TaskListPool.TryPop(out var v) ? v : new List<EventHandlerBase>();
 
-        protected void DelTaskList(List<EventHandlerBase> paramList)
+        protected static void DelTaskList(List<EventHandlerBase> paramList)
         {
             paramList.Clear();
-            if (_taskListPool.Count < _maxTaskListCache) _taskListPool.Push(paramList);
+            if (TaskListPool.Count < _maxTaskListCache) TaskListPool.Push(paramList);
         }
 
-        private readonly ConcurrentStack<List<EventHandlerBase>> _taskListPool = new();
+        private static readonly ConcurrentStack<List<EventHandlerBase>> TaskListPool = new();
 
         #endregion
 
         #region param list
 
-        public int MaxParamListCache
+        public static int MaxParamListCache
         {
             get => _maxParamListCache;
             set
             {
                 _maxParamListCache = value;
-                _paramListPool.Clear();
+                ParamListPool.Clear();
             }
         }
 
-        protected readonly List<ParamPack> EmptyParamList = new();
+        protected static readonly List<ParamPack> EmptyParamList = new();
 
-        private int _maxParamListCache = 100;
+        private static int _maxParamListCache = 100;
 
-        protected List<ParamPack> NewParamList() => _paramListPool.TryPop(out var v) ? v : new List<ParamPack>();
+        protected static List<ParamPack> NewParamList() => ParamListPool.TryPop(out var v) ? v : new List<ParamPack>();
 
         protected void DelParamList(List<ParamPack> paramList)
         {
             if (ReferenceEquals(paramList, EmptyParamList)) return;
-            foreach (var param in paramList) param.Dispose(); // 释放参数包的数据
+            foreach (var pack in paramList)
+            {
+                var packCopy = pack;
+                DisposeParamPack(ref packCopy); // 释放参数包的数据
+            }
             paramList.Clear();
-            if (_paramListPool.Count < _maxParamListCache) _paramListPool.Push(paramList);
+            if (ParamListPool.Count < _maxParamListCache) ParamListPool.Push(paramList);
         }
 
-        protected static ParamPack NewValuePack<T>(T? obj) => ParamPack.Create(obj);
-
-        private readonly ConcurrentStack<List<ParamPack>> _paramListPool = new();
+        private static readonly ConcurrentStack<List<ParamPack>> ParamListPool = new();
 
         #endregion
     }

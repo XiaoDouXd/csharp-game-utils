@@ -44,7 +44,7 @@ namespace XD.Common.Event
             public void Bind(Action<T0?>? act = null) => _act = act;
             public override void Run(IReadOnlyList<ParamPack> pack) =>
                 _act?.Invoke(
-                    EventParams.Get<T0>(pack, 0)
+                    Dispatcher.UnpackParam<T0>(pack, 0)
                 );
 
             public override void Del() => _act = null;
@@ -67,8 +67,8 @@ namespace XD.Common.Event
             public void Bind(Action<T0?, T1?>? act = null) => _act = act;
             public override void Run(IReadOnlyList<ParamPack> pack) =>
                 _act?.Invoke(
-                    EventParams.Get<T0>(pack, 0),
-                    EventParams.Get<T1>(pack, 1)
+                    Dispatcher.UnpackParam<T0>(pack, 0),
+                    Dispatcher.UnpackParam<T1>(pack, 1)
                 );
 
             public override void Del() => _act = null;
@@ -91,9 +91,9 @@ namespace XD.Common.Event
             public void Bind(Action<T0?, T1?, T2?>? act = null) => _act = act;
             public override void Run(IReadOnlyList<ParamPack> pack) =>
                 _act?.Invoke(
-                    EventParams.Get<T0>(pack, 0),
-                    EventParams.Get<T1>(pack, 1),
-                    EventParams.Get<T2>(pack, 2)
+                    Dispatcher.UnpackParam<T0>(pack, 0),
+                    Dispatcher.UnpackParam<T1>(pack, 1),
+                    Dispatcher.UnpackParam<T2>(pack, 2)
                 );
 
             public override void Del() => _act = null;
@@ -118,10 +118,10 @@ namespace XD.Common.Event
             public void Bind(Action<T0?, T1?, T2?, T3?>? act = null) => _act = act;
             public override void Run(IReadOnlyList<ParamPack> pack) =>
                 _act?.Invoke(
-                    EventParams.Get<T0>(pack, 0),
-                    EventParams.Get<T1>(pack, 1),
-                    EventParams.Get<T2>(pack, 2),
-                    EventParams.Get<T3>(pack, 3)
+                    Dispatcher.UnpackParam<T0>(pack, 0),
+                    Dispatcher.UnpackParam<T1>(pack, 1),
+                    Dispatcher.UnpackParam<T2>(pack, 2),
+                    Dispatcher.UnpackParam<T3>(pack, 3)
                 );
 
             public override void Del() => _act = null;
@@ -146,11 +146,11 @@ namespace XD.Common.Event
             public void Bind(Action<T0?, T1?, T2?, T3?, T4?>? act = null) => _act = act;
             public override void Run(IReadOnlyList<ParamPack> pack) =>
                 _act?.Invoke(
-                    EventParams.Get<T0>(pack, 0),
-                    EventParams.Get<T1>(pack, 1),
-                    EventParams.Get<T2>(pack, 2),
-                    EventParams.Get<T3>(pack, 3),
-                    EventParams.Get<T4>(pack, 4)
+                    Dispatcher.UnpackParam<T0>(pack, 0),
+                    Dispatcher.UnpackParam<T1>(pack, 1),
+                    Dispatcher.UnpackParam<T2>(pack, 2),
+                    Dispatcher.UnpackParam<T3>(pack, 3),
+                    Dispatcher.UnpackParam<T4>(pack, 4)
                 );
 
             public override void Del() => _act = null;
@@ -175,12 +175,12 @@ namespace XD.Common.Event
             public void Bind(Action<T0?, T1?, T2?, T3?, T4?, T5?>? act = null) => _act = act;
             public override void Run(IReadOnlyList<ParamPack> pack) =>
                 _act?.Invoke(
-                    EventParams.Get<T0>(pack, 0),
-                    EventParams.Get<T1>(pack, 1),
-                    EventParams.Get<T2>(pack, 2),
-                    EventParams.Get<T3>(pack, 3),
-                    EventParams.Get<T4>(pack, 4),
-                    EventParams.Get<T5>(pack, 5)
+                    Dispatcher.UnpackParam<T0>(pack, 0),
+                    Dispatcher.UnpackParam<T1>(pack, 1),
+                    Dispatcher.UnpackParam<T2>(pack, 2),
+                    Dispatcher.UnpackParam<T3>(pack, 3),
+                    Dispatcher.UnpackParam<T4>(pack, 4),
+                    Dispatcher.UnpackParam<T5>(pack, 5)
                 );
 
             public override void Del() => _act = null;
@@ -205,13 +205,13 @@ namespace XD.Common.Event
             public void Bind(Action<T0?, T1?, T2?, T3?, T4?, T5?, T6?>? act = null) => _act = act;
             public override void Run(IReadOnlyList<ParamPack> pack) =>
                 _act?.Invoke(
-                    EventParams.Get<T0>(pack, 0),
-                    EventParams.Get<T1>(pack, 1),
-                    EventParams.Get<T2>(pack, 2),
-                    EventParams.Get<T3>(pack, 3),
-                    EventParams.Get<T4>(pack, 4),
-                    EventParams.Get<T5>(pack, 5),
-                    EventParams.Get<T6>(pack, 6)
+                    Dispatcher.UnpackParam<T0>(pack, 0),
+                    Dispatcher.UnpackParam<T1>(pack, 1),
+                    Dispatcher.UnpackParam<T2>(pack, 2),
+                    Dispatcher.UnpackParam<T3>(pack, 3),
+                    Dispatcher.UnpackParam<T4>(pack, 4),
+                    Dispatcher.UnpackParam<T5>(pack, 5),
+                    Dispatcher.UnpackParam<T6>(pack, 6)
                 );
 
             public override void Del() => _act = null;
@@ -236,14 +236,14 @@ namespace XD.Common.Event
             public void Bind(Action<T0?, T1?, T2?, T3?, T4?, T5?, T6?, T7?>? act = null) => _act = act;
             public override void Run(IReadOnlyList<ParamPack> pack) =>
                 _act?.Invoke(
-                    EventParams.Get<T0>(pack, 0),
-                    EventParams.Get<T1>(pack, 1),
-                    EventParams.Get<T2>(pack, 2),
-                    EventParams.Get<T3>(pack, 3),
-                    EventParams.Get<T4>(pack, 4),
-                    EventParams.Get<T5>(pack, 5),
-                    EventParams.Get<T6>(pack, 6),
-                    EventParams.Get<T7>(pack, 7)
+                    Dispatcher.UnpackParam<T0>(pack, 0),
+                    Dispatcher.UnpackParam<T1>(pack, 1),
+                    Dispatcher.UnpackParam<T2>(pack, 2),
+                    Dispatcher.UnpackParam<T3>(pack, 3),
+                    Dispatcher.UnpackParam<T4>(pack, 4),
+                    Dispatcher.UnpackParam<T5>(pack, 5),
+                    Dispatcher.UnpackParam<T6>(pack, 6),
+                    Dispatcher.UnpackParam<T7>(pack, 7)
                 );
 
             public override void Del() => _act = null;
@@ -269,15 +269,15 @@ namespace XD.Common.Event
             public void Bind(Action<T0?, T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?>? act = null) => _act = act;
             public override void Run(IReadOnlyList<ParamPack> pack) =>
                 _act?.Invoke(
-                    EventParams.Get<T0>(pack, 0),
-                    EventParams.Get<T1>(pack, 1),
-                    EventParams.Get<T2>(pack, 2),
-                    EventParams.Get<T3>(pack, 3),
-                    EventParams.Get<T4>(pack, 4),
-                    EventParams.Get<T5>(pack, 5),
-                    EventParams.Get<T6>(pack, 6),
-                    EventParams.Get<T7>(pack, 7),
-                    EventParams.Get<T8>(pack, 8)
+                    Dispatcher.UnpackParam<T0>(pack, 0),
+                    Dispatcher.UnpackParam<T1>(pack, 1),
+                    Dispatcher.UnpackParam<T2>(pack, 2),
+                    Dispatcher.UnpackParam<T3>(pack, 3),
+                    Dispatcher.UnpackParam<T4>(pack, 4),
+                    Dispatcher.UnpackParam<T5>(pack, 5),
+                    Dispatcher.UnpackParam<T6>(pack, 6),
+                    Dispatcher.UnpackParam<T7>(pack, 7),
+                    Dispatcher.UnpackParam<T8>(pack, 8)
                 );
 
             public override void Del() => _act = null;
@@ -303,16 +303,16 @@ namespace XD.Common.Event
             public void Bind(Action<T0?, T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?>? act = null) => _act = act;
             public override void Run(IReadOnlyList<ParamPack> pack) =>
                 _act?.Invoke(
-                    EventParams.Get<T0>(pack, 0),
-                    EventParams.Get<T1>(pack, 1),
-                    EventParams.Get<T2>(pack, 2),
-                    EventParams.Get<T3>(pack, 3),
-                    EventParams.Get<T4>(pack, 4),
-                    EventParams.Get<T5>(pack, 5),
-                    EventParams.Get<T6>(pack, 6),
-                    EventParams.Get<T7>(pack, 7),
-                    EventParams.Get<T8>(pack, 8),
-                    EventParams.Get<T9>(pack, 9)
+                    Dispatcher.UnpackParam<T0>(pack, 0),
+                    Dispatcher.UnpackParam<T1>(pack, 1),
+                    Dispatcher.UnpackParam<T2>(pack, 2),
+                    Dispatcher.UnpackParam<T3>(pack, 3),
+                    Dispatcher.UnpackParam<T4>(pack, 4),
+                    Dispatcher.UnpackParam<T5>(pack, 5),
+                    Dispatcher.UnpackParam<T6>(pack, 6),
+                    Dispatcher.UnpackParam<T7>(pack, 7),
+                    Dispatcher.UnpackParam<T8>(pack, 8),
+                    Dispatcher.UnpackParam<T9>(pack, 9)
                 );
 
             public override void Del() => _act = null;
@@ -338,17 +338,17 @@ namespace XD.Common.Event
             public void Bind(Action<T0?, T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?>? act = null) => _act = act;
             public override void Run(IReadOnlyList<ParamPack> pack) =>
                 _act?.Invoke(
-                    EventParams.Get<T0>(pack, 0),
-                    EventParams.Get<T1>(pack, 1),
-                    EventParams.Get<T2>(pack, 2),
-                    EventParams.Get<T3>(pack, 3),
-                    EventParams.Get<T4>(pack, 4),
-                    EventParams.Get<T5>(pack, 5),
-                    EventParams.Get<T6>(pack, 6),
-                    EventParams.Get<T7>(pack, 7),
-                    EventParams.Get<T8>(pack, 8),
-                    EventParams.Get<T9>(pack, 9),
-                    EventParams.Get<T10>(pack, 10)
+                    Dispatcher.UnpackParam<T0>(pack, 0),
+                    Dispatcher.UnpackParam<T1>(pack, 1),
+                    Dispatcher.UnpackParam<T2>(pack, 2),
+                    Dispatcher.UnpackParam<T3>(pack, 3),
+                    Dispatcher.UnpackParam<T4>(pack, 4),
+                    Dispatcher.UnpackParam<T5>(pack, 5),
+                    Dispatcher.UnpackParam<T6>(pack, 6),
+                    Dispatcher.UnpackParam<T7>(pack, 7),
+                    Dispatcher.UnpackParam<T8>(pack, 8),
+                    Dispatcher.UnpackParam<T9>(pack, 9),
+                    Dispatcher.UnpackParam<T10>(pack, 10)
                 );
 
             public override void Del() => _act = null;
@@ -374,18 +374,18 @@ namespace XD.Common.Event
             public void Bind(Action<T0?, T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?>? act = null) => _act = act;
             public override void Run(IReadOnlyList<ParamPack> pack) =>
                 _act?.Invoke(
-                    EventParams.Get<T0>(pack, 0),
-                    EventParams.Get<T1>(pack, 1),
-                    EventParams.Get<T2>(pack, 2),
-                    EventParams.Get<T3>(pack, 3),
-                    EventParams.Get<T4>(pack, 4),
-                    EventParams.Get<T5>(pack, 5),
-                    EventParams.Get<T6>(pack, 6),
-                    EventParams.Get<T7>(pack, 7),
-                    EventParams.Get<T8>(pack, 8),
-                    EventParams.Get<T9>(pack, 9),
-                    EventParams.Get<T10>(pack, 10),
-                    EventParams.Get<T11>(pack, 11)
+                    Dispatcher.UnpackParam<T0>(pack, 0),
+                    Dispatcher.UnpackParam<T1>(pack, 1),
+                    Dispatcher.UnpackParam<T2>(pack, 2),
+                    Dispatcher.UnpackParam<T3>(pack, 3),
+                    Dispatcher.UnpackParam<T4>(pack, 4),
+                    Dispatcher.UnpackParam<T5>(pack, 5),
+                    Dispatcher.UnpackParam<T6>(pack, 6),
+                    Dispatcher.UnpackParam<T7>(pack, 7),
+                    Dispatcher.UnpackParam<T8>(pack, 8),
+                    Dispatcher.UnpackParam<T9>(pack, 9),
+                    Dispatcher.UnpackParam<T10>(pack, 10),
+                    Dispatcher.UnpackParam<T11>(pack, 11)
                 );
 
             public override void Del() => _act = null;
@@ -411,19 +411,19 @@ namespace XD.Common.Event
             public void Bind(Action<T0?, T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?>? act = null) => _act = act;
             public override void Run(IReadOnlyList<ParamPack> pack) =>
                 _act?.Invoke(
-                    EventParams.Get<T0>(pack, 0),
-                    EventParams.Get<T1>(pack, 1),
-                    EventParams.Get<T2>(pack, 2),
-                    EventParams.Get<T3>(pack, 3),
-                    EventParams.Get<T4>(pack, 4),
-                    EventParams.Get<T5>(pack, 5),
-                    EventParams.Get<T6>(pack, 6),
-                    EventParams.Get<T7>(pack, 7),
-                    EventParams.Get<T8>(pack, 8),
-                    EventParams.Get<T9>(pack, 9),
-                    EventParams.Get<T10>(pack, 10),
-                    EventParams.Get<T11>(pack, 11),
-                    EventParams.Get<T12>(pack, 12)
+                    Dispatcher.UnpackParam<T0>(pack, 0),
+                    Dispatcher.UnpackParam<T1>(pack, 1),
+                    Dispatcher.UnpackParam<T2>(pack, 2),
+                    Dispatcher.UnpackParam<T3>(pack, 3),
+                    Dispatcher.UnpackParam<T4>(pack, 4),
+                    Dispatcher.UnpackParam<T5>(pack, 5),
+                    Dispatcher.UnpackParam<T6>(pack, 6),
+                    Dispatcher.UnpackParam<T7>(pack, 7),
+                    Dispatcher.UnpackParam<T8>(pack, 8),
+                    Dispatcher.UnpackParam<T9>(pack, 9),
+                    Dispatcher.UnpackParam<T10>(pack, 10),
+                    Dispatcher.UnpackParam<T11>(pack, 11),
+                    Dispatcher.UnpackParam<T12>(pack, 12)
                 );
 
             public override void Del() => _act = null;
@@ -449,20 +449,20 @@ namespace XD.Common.Event
             public void Bind(Action<T0?, T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?>? act = null) => _act = act;
             public override void Run(IReadOnlyList<ParamPack> pack) =>
                 _act?.Invoke(
-                    EventParams.Get<T0>(pack, 0),
-                    EventParams.Get<T1>(pack, 1),
-                    EventParams.Get<T2>(pack, 2),
-                    EventParams.Get<T3>(pack, 3),
-                    EventParams.Get<T4>(pack, 4),
-                    EventParams.Get<T5>(pack, 5),
-                    EventParams.Get<T6>(pack, 6),
-                    EventParams.Get<T7>(pack, 7),
-                    EventParams.Get<T8>(pack, 8),
-                    EventParams.Get<T9>(pack, 9),
-                    EventParams.Get<T10>(pack, 10),
-                    EventParams.Get<T11>(pack, 11),
-                    EventParams.Get<T12>(pack, 12),
-                    EventParams.Get<T13>(pack, 13)
+                    Dispatcher.UnpackParam<T0>(pack, 0),
+                    Dispatcher.UnpackParam<T1>(pack, 1),
+                    Dispatcher.UnpackParam<T2>(pack, 2),
+                    Dispatcher.UnpackParam<T3>(pack, 3),
+                    Dispatcher.UnpackParam<T4>(pack, 4),
+                    Dispatcher.UnpackParam<T5>(pack, 5),
+                    Dispatcher.UnpackParam<T6>(pack, 6),
+                    Dispatcher.UnpackParam<T7>(pack, 7),
+                    Dispatcher.UnpackParam<T8>(pack, 8),
+                    Dispatcher.UnpackParam<T9>(pack, 9),
+                    Dispatcher.UnpackParam<T10>(pack, 10),
+                    Dispatcher.UnpackParam<T11>(pack, 11),
+                    Dispatcher.UnpackParam<T12>(pack, 12),
+                    Dispatcher.UnpackParam<T13>(pack, 13)
                 );
 
             public override void Del() => _act = null;
@@ -488,21 +488,21 @@ namespace XD.Common.Event
             public void Bind(Action<T0?, T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?>? act = null) => _act = act;
             public override void Run(IReadOnlyList<ParamPack> pack) =>
                 _act?.Invoke(
-                    EventParams.Get<T0>(pack, 0),
-                    EventParams.Get<T1>(pack, 1),
-                    EventParams.Get<T2>(pack, 2),
-                    EventParams.Get<T3>(pack, 3),
-                    EventParams.Get<T4>(pack, 4),
-                    EventParams.Get<T5>(pack, 5),
-                    EventParams.Get<T6>(pack, 6),
-                    EventParams.Get<T7>(pack, 7),
-                    EventParams.Get<T8>(pack, 8),
-                    EventParams.Get<T9>(pack, 9),
-                    EventParams.Get<T10>(pack, 10),
-                    EventParams.Get<T11>(pack, 11),
-                    EventParams.Get<T12>(pack, 12),
-                    EventParams.Get<T13>(pack, 13),
-                    EventParams.Get<T14>(pack, 14)
+                    Dispatcher.UnpackParam<T0>(pack, 0),
+                    Dispatcher.UnpackParam<T1>(pack, 1),
+                    Dispatcher.UnpackParam<T2>(pack, 2),
+                    Dispatcher.UnpackParam<T3>(pack, 3),
+                    Dispatcher.UnpackParam<T4>(pack, 4),
+                    Dispatcher.UnpackParam<T5>(pack, 5),
+                    Dispatcher.UnpackParam<T6>(pack, 6),
+                    Dispatcher.UnpackParam<T7>(pack, 7),
+                    Dispatcher.UnpackParam<T8>(pack, 8),
+                    Dispatcher.UnpackParam<T9>(pack, 9),
+                    Dispatcher.UnpackParam<T10>(pack, 10),
+                    Dispatcher.UnpackParam<T11>(pack, 11),
+                    Dispatcher.UnpackParam<T12>(pack, 12),
+                    Dispatcher.UnpackParam<T13>(pack, 13),
+                    Dispatcher.UnpackParam<T14>(pack, 14)
                 );
 
             public override void Del() => _act = null;
@@ -528,22 +528,22 @@ namespace XD.Common.Event
             public void Bind(Action<T0?, T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?>? act = null) => _act = act;
             public override void Run(IReadOnlyList<ParamPack> pack) =>
                 _act?.Invoke(
-                    EventParams.Get<T0>(pack, 0),
-                    EventParams.Get<T1>(pack, 1),
-                    EventParams.Get<T2>(pack, 2),
-                    EventParams.Get<T3>(pack, 3),
-                    EventParams.Get<T4>(pack, 4),
-                    EventParams.Get<T5>(pack, 5),
-                    EventParams.Get<T6>(pack, 6),
-                    EventParams.Get<T7>(pack, 7),
-                    EventParams.Get<T8>(pack, 8),
-                    EventParams.Get<T9>(pack, 9),
-                    EventParams.Get<T10>(pack, 10),
-                    EventParams.Get<T11>(pack, 11),
-                    EventParams.Get<T12>(pack, 12),
-                    EventParams.Get<T13>(pack, 13),
-                    EventParams.Get<T14>(pack, 14),
-                    EventParams.Get<T15>(pack, 15)
+                    Dispatcher.UnpackParam<T0>(pack, 0),
+                    Dispatcher.UnpackParam<T1>(pack, 1),
+                    Dispatcher.UnpackParam<T2>(pack, 2),
+                    Dispatcher.UnpackParam<T3>(pack, 3),
+                    Dispatcher.UnpackParam<T4>(pack, 4),
+                    Dispatcher.UnpackParam<T5>(pack, 5),
+                    Dispatcher.UnpackParam<T6>(pack, 6),
+                    Dispatcher.UnpackParam<T7>(pack, 7),
+                    Dispatcher.UnpackParam<T8>(pack, 8),
+                    Dispatcher.UnpackParam<T9>(pack, 9),
+                    Dispatcher.UnpackParam<T10>(pack, 10),
+                    Dispatcher.UnpackParam<T11>(pack, 11),
+                    Dispatcher.UnpackParam<T12>(pack, 12),
+                    Dispatcher.UnpackParam<T13>(pack, 13),
+                    Dispatcher.UnpackParam<T14>(pack, 14),
+                    Dispatcher.UnpackParam<T15>(pack, 15)
                 );
 
             public override void Del() => _act = null;

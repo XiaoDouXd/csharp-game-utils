@@ -78,12 +78,12 @@ namespace XD.Common.Event
                 ParamList = paramList;
             }
 
-            public void Do(EventDispatcherAsync module)
+            public void Do(EventDispatcherAsync dispatcher)
             {
                 if (Handler == null)
                 {
                     if (ParamList == null) return;
-                    module.DelParamList(ParamList);
+                    dispatcher.DelParamList(ParamList);
                     return;
                 }
                 Handler.Run(ParamList);

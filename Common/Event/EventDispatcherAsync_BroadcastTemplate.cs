@@ -18,7 +18,7 @@ namespace XD.Common.Event
         public void BroadcastFrameAsync<T0>(in EventIdentify id, T0? p0)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
+            paramList.Add(PackParam(p0));
             BroadcastFrameAsync(id, paramList);
         }
 
@@ -27,8 +27,8 @@ namespace XD.Common.Event
         public void BroadcastFrameAsync<T0, T1>(in EventIdentify id, T0? p0, T1? p1)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
             BroadcastFrameAsync(id, paramList);
         }
 
@@ -37,9 +37,9 @@ namespace XD.Common.Event
         public void BroadcastFrameAsync<T0, T1, T2>(in EventIdentify id, T0? p0, T1? p1, T2? p2)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
-            paramList.Add(NewValuePack(p2));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
+            paramList.Add(PackParam(p2));
             BroadcastFrameAsync(id, paramList);
         }
 
@@ -48,10 +48,10 @@ namespace XD.Common.Event
         public void BroadcastFrameAsync<T0, T1, T2, T3>(in EventIdentify id, T0? p0, T1? p1, T2? p2, T3? p3)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
-            paramList.Add(NewValuePack(p2));
-            paramList.Add(NewValuePack(p3));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
+            paramList.Add(PackParam(p2));
+            paramList.Add(PackParam(p3));
             BroadcastFrameAsync(id, paramList);
         }
 
@@ -60,11 +60,11 @@ namespace XD.Common.Event
         public void BroadcastFrameAsync<T0, T1, T2, T3, T4>(in EventIdentify id, T0? p0, T1? p1, T2? p2, T3? p3, T4? p4)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
-            paramList.Add(NewValuePack(p2));
-            paramList.Add(NewValuePack(p3));
-            paramList.Add(NewValuePack(p4));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
+            paramList.Add(PackParam(p2));
+            paramList.Add(PackParam(p3));
+            paramList.Add(PackParam(p4));
             BroadcastFrameAsync(id, paramList);
         }
 
@@ -73,12 +73,12 @@ namespace XD.Common.Event
         public void BroadcastFrameAsync<T0, T1, T2, T3, T4, T5>(in EventIdentify id, T0? p0, T1? p1, T2? p2, T3? p3, T4? p4, T5? p5)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
-            paramList.Add(NewValuePack(p2));
-            paramList.Add(NewValuePack(p3));
-            paramList.Add(NewValuePack(p4));
-            paramList.Add(NewValuePack(p5));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
+            paramList.Add(PackParam(p2));
+            paramList.Add(PackParam(p3));
+            paramList.Add(PackParam(p4));
+            paramList.Add(PackParam(p5));
             BroadcastFrameAsync(id, paramList);
         }
 
@@ -87,13 +87,13 @@ namespace XD.Common.Event
         public void BroadcastFrameAsync<T0, T1, T2, T3, T4, T5, T6>(in EventIdentify id, T0? p0, T1? p1, T2? p2, T3? p3, T4? p4, T5? p5, T6? p6)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
-            paramList.Add(NewValuePack(p2));
-            paramList.Add(NewValuePack(p3));
-            paramList.Add(NewValuePack(p4));
-            paramList.Add(NewValuePack(p5));
-            paramList.Add(NewValuePack(p6));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
+            paramList.Add(PackParam(p2));
+            paramList.Add(PackParam(p3));
+            paramList.Add(PackParam(p4));
+            paramList.Add(PackParam(p5));
+            paramList.Add(PackParam(p6));
             BroadcastFrameAsync(id, paramList);
         }
 
@@ -102,14 +102,14 @@ namespace XD.Common.Event
         public void BroadcastFrameAsync<T0, T1, T2, T3, T4, T5, T6, T7>(in EventIdentify id, T0? p0, T1? p1, T2? p2, T3? p3, T4? p4, T5? p5, T6? p6, T7? p7)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
-            paramList.Add(NewValuePack(p2));
-            paramList.Add(NewValuePack(p3));
-            paramList.Add(NewValuePack(p4));
-            paramList.Add(NewValuePack(p5));
-            paramList.Add(NewValuePack(p6));
-            paramList.Add(NewValuePack(p7));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
+            paramList.Add(PackParam(p2));
+            paramList.Add(PackParam(p3));
+            paramList.Add(PackParam(p4));
+            paramList.Add(PackParam(p5));
+            paramList.Add(PackParam(p6));
+            paramList.Add(PackParam(p7));
             BroadcastFrameAsync(id, paramList);
         }
 
@@ -118,15 +118,15 @@ namespace XD.Common.Event
         public void BroadcastFrameAsync<T0, T1, T2, T3, T4, T5, T6, T7, T8>(in EventIdentify id, T0? p0, T1? p1, T2? p2, T3? p3, T4? p4, T5? p5, T6? p6, T7? p7, T8? p8)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
-            paramList.Add(NewValuePack(p2));
-            paramList.Add(NewValuePack(p3));
-            paramList.Add(NewValuePack(p4));
-            paramList.Add(NewValuePack(p5));
-            paramList.Add(NewValuePack(p6));
-            paramList.Add(NewValuePack(p7));
-            paramList.Add(NewValuePack(p8));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
+            paramList.Add(PackParam(p2));
+            paramList.Add(PackParam(p3));
+            paramList.Add(PackParam(p4));
+            paramList.Add(PackParam(p5));
+            paramList.Add(PackParam(p6));
+            paramList.Add(PackParam(p7));
+            paramList.Add(PackParam(p8));
             BroadcastFrameAsync(id, paramList);
         }
 
@@ -135,16 +135,16 @@ namespace XD.Common.Event
         public void BroadcastFrameAsync<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>(in EventIdentify id, T0? p0, T1? p1, T2? p2, T3? p3, T4? p4, T5? p5, T6? p6, T7? p7, T8? p8, T9? p9)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
-            paramList.Add(NewValuePack(p2));
-            paramList.Add(NewValuePack(p3));
-            paramList.Add(NewValuePack(p4));
-            paramList.Add(NewValuePack(p5));
-            paramList.Add(NewValuePack(p6));
-            paramList.Add(NewValuePack(p7));
-            paramList.Add(NewValuePack(p8));
-            paramList.Add(NewValuePack(p9));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
+            paramList.Add(PackParam(p2));
+            paramList.Add(PackParam(p3));
+            paramList.Add(PackParam(p4));
+            paramList.Add(PackParam(p5));
+            paramList.Add(PackParam(p6));
+            paramList.Add(PackParam(p7));
+            paramList.Add(PackParam(p8));
+            paramList.Add(PackParam(p9));
             BroadcastFrameAsync(id, paramList);
         }
 
@@ -153,17 +153,17 @@ namespace XD.Common.Event
         public void BroadcastFrameAsync<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(in EventIdentify id, T0? p0, T1? p1, T2? p2, T3? p3, T4? p4, T5? p5, T6? p6, T7? p7, T8? p8, T9? p9, T10? p10)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
-            paramList.Add(NewValuePack(p2));
-            paramList.Add(NewValuePack(p3));
-            paramList.Add(NewValuePack(p4));
-            paramList.Add(NewValuePack(p5));
-            paramList.Add(NewValuePack(p6));
-            paramList.Add(NewValuePack(p7));
-            paramList.Add(NewValuePack(p8));
-            paramList.Add(NewValuePack(p9));
-            paramList.Add(NewValuePack(p10));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
+            paramList.Add(PackParam(p2));
+            paramList.Add(PackParam(p3));
+            paramList.Add(PackParam(p4));
+            paramList.Add(PackParam(p5));
+            paramList.Add(PackParam(p6));
+            paramList.Add(PackParam(p7));
+            paramList.Add(PackParam(p8));
+            paramList.Add(PackParam(p9));
+            paramList.Add(PackParam(p10));
             BroadcastFrameAsync(id, paramList);
         }
 
@@ -172,18 +172,18 @@ namespace XD.Common.Event
         public void BroadcastFrameAsync<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(in EventIdentify id, T0? p0, T1? p1, T2? p2, T3? p3, T4? p4, T5? p5, T6? p6, T7? p7, T8? p8, T9? p9, T10? p10, T11? p11)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
-            paramList.Add(NewValuePack(p2));
-            paramList.Add(NewValuePack(p3));
-            paramList.Add(NewValuePack(p4));
-            paramList.Add(NewValuePack(p5));
-            paramList.Add(NewValuePack(p6));
-            paramList.Add(NewValuePack(p7));
-            paramList.Add(NewValuePack(p8));
-            paramList.Add(NewValuePack(p9));
-            paramList.Add(NewValuePack(p10));
-            paramList.Add(NewValuePack(p11));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
+            paramList.Add(PackParam(p2));
+            paramList.Add(PackParam(p3));
+            paramList.Add(PackParam(p4));
+            paramList.Add(PackParam(p5));
+            paramList.Add(PackParam(p6));
+            paramList.Add(PackParam(p7));
+            paramList.Add(PackParam(p8));
+            paramList.Add(PackParam(p9));
+            paramList.Add(PackParam(p10));
+            paramList.Add(PackParam(p11));
             BroadcastFrameAsync(id, paramList);
         }
 
@@ -192,19 +192,19 @@ namespace XD.Common.Event
         public void BroadcastFrameAsync<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(in EventIdentify id, T0? p0, T1? p1, T2? p2, T3? p3, T4? p4, T5? p5, T6? p6, T7? p7, T8? p8, T9? p9, T10? p10, T11? p11, T12? p12)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
-            paramList.Add(NewValuePack(p2));
-            paramList.Add(NewValuePack(p3));
-            paramList.Add(NewValuePack(p4));
-            paramList.Add(NewValuePack(p5));
-            paramList.Add(NewValuePack(p6));
-            paramList.Add(NewValuePack(p7));
-            paramList.Add(NewValuePack(p8));
-            paramList.Add(NewValuePack(p9));
-            paramList.Add(NewValuePack(p10));
-            paramList.Add(NewValuePack(p11));
-            paramList.Add(NewValuePack(p12));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
+            paramList.Add(PackParam(p2));
+            paramList.Add(PackParam(p3));
+            paramList.Add(PackParam(p4));
+            paramList.Add(PackParam(p5));
+            paramList.Add(PackParam(p6));
+            paramList.Add(PackParam(p7));
+            paramList.Add(PackParam(p8));
+            paramList.Add(PackParam(p9));
+            paramList.Add(PackParam(p10));
+            paramList.Add(PackParam(p11));
+            paramList.Add(PackParam(p12));
             BroadcastFrameAsync(id, paramList);
         }
 
@@ -213,20 +213,20 @@ namespace XD.Common.Event
         public void BroadcastFrameAsync<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(in EventIdentify id, T0? p0, T1? p1, T2? p2, T3? p3, T4? p4, T5? p5, T6? p6, T7? p7, T8? p8, T9? p9, T10? p10, T11? p11, T12? p12, T13? p13)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
-            paramList.Add(NewValuePack(p2));
-            paramList.Add(NewValuePack(p3));
-            paramList.Add(NewValuePack(p4));
-            paramList.Add(NewValuePack(p5));
-            paramList.Add(NewValuePack(p6));
-            paramList.Add(NewValuePack(p7));
-            paramList.Add(NewValuePack(p8));
-            paramList.Add(NewValuePack(p9));
-            paramList.Add(NewValuePack(p10));
-            paramList.Add(NewValuePack(p11));
-            paramList.Add(NewValuePack(p12));
-            paramList.Add(NewValuePack(p13));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
+            paramList.Add(PackParam(p2));
+            paramList.Add(PackParam(p3));
+            paramList.Add(PackParam(p4));
+            paramList.Add(PackParam(p5));
+            paramList.Add(PackParam(p6));
+            paramList.Add(PackParam(p7));
+            paramList.Add(PackParam(p8));
+            paramList.Add(PackParam(p9));
+            paramList.Add(PackParam(p10));
+            paramList.Add(PackParam(p11));
+            paramList.Add(PackParam(p12));
+            paramList.Add(PackParam(p13));
             BroadcastFrameAsync(id, paramList);
         }
 
@@ -235,21 +235,21 @@ namespace XD.Common.Event
         public void BroadcastFrameAsync<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(in EventIdentify id, T0? p0, T1? p1, T2? p2, T3? p3, T4? p4, T5? p5, T6? p6, T7? p7, T8? p8, T9? p9, T10? p10, T11? p11, T12? p12, T13? p13, T14? p14)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
-            paramList.Add(NewValuePack(p2));
-            paramList.Add(NewValuePack(p3));
-            paramList.Add(NewValuePack(p4));
-            paramList.Add(NewValuePack(p5));
-            paramList.Add(NewValuePack(p6));
-            paramList.Add(NewValuePack(p7));
-            paramList.Add(NewValuePack(p8));
-            paramList.Add(NewValuePack(p9));
-            paramList.Add(NewValuePack(p10));
-            paramList.Add(NewValuePack(p11));
-            paramList.Add(NewValuePack(p12));
-            paramList.Add(NewValuePack(p13));
-            paramList.Add(NewValuePack(p14));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
+            paramList.Add(PackParam(p2));
+            paramList.Add(PackParam(p3));
+            paramList.Add(PackParam(p4));
+            paramList.Add(PackParam(p5));
+            paramList.Add(PackParam(p6));
+            paramList.Add(PackParam(p7));
+            paramList.Add(PackParam(p8));
+            paramList.Add(PackParam(p9));
+            paramList.Add(PackParam(p10));
+            paramList.Add(PackParam(p11));
+            paramList.Add(PackParam(p12));
+            paramList.Add(PackParam(p13));
+            paramList.Add(PackParam(p14));
             BroadcastFrameAsync(id, paramList);
         }
 
@@ -258,22 +258,22 @@ namespace XD.Common.Event
         public void BroadcastFrameAsync<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(in EventIdentify id, T0? p0, T1? p1, T2? p2, T3? p3, T4? p4, T5? p5, T6? p6, T7? p7, T8? p8, T9? p9, T10? p10, T11? p11, T12? p12, T13? p13, T14? p14, T15? p15)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
-            paramList.Add(NewValuePack(p2));
-            paramList.Add(NewValuePack(p3));
-            paramList.Add(NewValuePack(p4));
-            paramList.Add(NewValuePack(p5));
-            paramList.Add(NewValuePack(p6));
-            paramList.Add(NewValuePack(p7));
-            paramList.Add(NewValuePack(p8));
-            paramList.Add(NewValuePack(p9));
-            paramList.Add(NewValuePack(p10));
-            paramList.Add(NewValuePack(p11));
-            paramList.Add(NewValuePack(p12));
-            paramList.Add(NewValuePack(p13));
-            paramList.Add(NewValuePack(p14));
-            paramList.Add(NewValuePack(p15));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
+            paramList.Add(PackParam(p2));
+            paramList.Add(PackParam(p3));
+            paramList.Add(PackParam(p4));
+            paramList.Add(PackParam(p5));
+            paramList.Add(PackParam(p6));
+            paramList.Add(PackParam(p7));
+            paramList.Add(PackParam(p8));
+            paramList.Add(PackParam(p9));
+            paramList.Add(PackParam(p10));
+            paramList.Add(PackParam(p11));
+            paramList.Add(PackParam(p12));
+            paramList.Add(PackParam(p13));
+            paramList.Add(PackParam(p14));
+            paramList.Add(PackParam(p15));
             BroadcastFrameAsync(id, paramList);
         }
 
@@ -291,7 +291,7 @@ namespace XD.Common.Event
         public void BroadcastFrameDelay<T0>(in EventIdentify id, T0? p0)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
+            paramList.Add(PackParam(p0));
             BroadcastFrameDelay(id, paramList);
         }
 
@@ -300,8 +300,8 @@ namespace XD.Common.Event
         public void BroadcastFrameDelay<T0, T1>(in EventIdentify id, T0? p0, T1? p1)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
             BroadcastFrameDelay(id, paramList);
         }
 
@@ -310,9 +310,9 @@ namespace XD.Common.Event
         public void BroadcastFrameDelay<T0, T1, T2>(in EventIdentify id, T0? p0, T1? p1, T2? p2)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
-            paramList.Add(NewValuePack(p2));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
+            paramList.Add(PackParam(p2));
             BroadcastFrameDelay(id, paramList);
         }
 
@@ -321,10 +321,10 @@ namespace XD.Common.Event
         public void BroadcastFrameDelay<T0, T1, T2, T3>(in EventIdentify id, T0? p0, T1? p1, T2? p2, T3? p3)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
-            paramList.Add(NewValuePack(p2));
-            paramList.Add(NewValuePack(p3));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
+            paramList.Add(PackParam(p2));
+            paramList.Add(PackParam(p3));
             BroadcastFrameDelay(id, paramList);
         }
 
@@ -333,11 +333,11 @@ namespace XD.Common.Event
         public void BroadcastFrameDelay<T0, T1, T2, T3, T4>(in EventIdentify id, T0? p0, T1? p1, T2? p2, T3? p3, T4? p4)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
-            paramList.Add(NewValuePack(p2));
-            paramList.Add(NewValuePack(p3));
-            paramList.Add(NewValuePack(p4));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
+            paramList.Add(PackParam(p2));
+            paramList.Add(PackParam(p3));
+            paramList.Add(PackParam(p4));
             BroadcastFrameDelay(id, paramList);
         }
 
@@ -346,12 +346,12 @@ namespace XD.Common.Event
         public void BroadcastFrameDelay<T0, T1, T2, T3, T4, T5>(in EventIdentify id, T0? p0, T1? p1, T2? p2, T3? p3, T4? p4, T5? p5)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
-            paramList.Add(NewValuePack(p2));
-            paramList.Add(NewValuePack(p3));
-            paramList.Add(NewValuePack(p4));
-            paramList.Add(NewValuePack(p5));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
+            paramList.Add(PackParam(p2));
+            paramList.Add(PackParam(p3));
+            paramList.Add(PackParam(p4));
+            paramList.Add(PackParam(p5));
             BroadcastFrameDelay(id, paramList);
         }
 
@@ -360,13 +360,13 @@ namespace XD.Common.Event
         public void BroadcastFrameDelay<T0, T1, T2, T3, T4, T5, T6>(in EventIdentify id, T0? p0, T1? p1, T2? p2, T3? p3, T4? p4, T5? p5, T6? p6)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
-            paramList.Add(NewValuePack(p2));
-            paramList.Add(NewValuePack(p3));
-            paramList.Add(NewValuePack(p4));
-            paramList.Add(NewValuePack(p5));
-            paramList.Add(NewValuePack(p6));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
+            paramList.Add(PackParam(p2));
+            paramList.Add(PackParam(p3));
+            paramList.Add(PackParam(p4));
+            paramList.Add(PackParam(p5));
+            paramList.Add(PackParam(p6));
             BroadcastFrameDelay(id, paramList);
         }
 
@@ -375,14 +375,14 @@ namespace XD.Common.Event
         public void BroadcastFrameDelay<T0, T1, T2, T3, T4, T5, T6, T7>(in EventIdentify id, T0? p0, T1? p1, T2? p2, T3? p3, T4? p4, T5? p5, T6? p6, T7? p7)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
-            paramList.Add(NewValuePack(p2));
-            paramList.Add(NewValuePack(p3));
-            paramList.Add(NewValuePack(p4));
-            paramList.Add(NewValuePack(p5));
-            paramList.Add(NewValuePack(p6));
-            paramList.Add(NewValuePack(p7));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
+            paramList.Add(PackParam(p2));
+            paramList.Add(PackParam(p3));
+            paramList.Add(PackParam(p4));
+            paramList.Add(PackParam(p5));
+            paramList.Add(PackParam(p6));
+            paramList.Add(PackParam(p7));
             BroadcastFrameDelay(id, paramList);
         }
 
@@ -391,15 +391,15 @@ namespace XD.Common.Event
         public void BroadcastFrameDelay<T0, T1, T2, T3, T4, T5, T6, T7, T8>(in EventIdentify id, T0? p0, T1? p1, T2? p2, T3? p3, T4? p4, T5? p5, T6? p6, T7? p7, T8? p8)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
-            paramList.Add(NewValuePack(p2));
-            paramList.Add(NewValuePack(p3));
-            paramList.Add(NewValuePack(p4));
-            paramList.Add(NewValuePack(p5));
-            paramList.Add(NewValuePack(p6));
-            paramList.Add(NewValuePack(p7));
-            paramList.Add(NewValuePack(p8));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
+            paramList.Add(PackParam(p2));
+            paramList.Add(PackParam(p3));
+            paramList.Add(PackParam(p4));
+            paramList.Add(PackParam(p5));
+            paramList.Add(PackParam(p6));
+            paramList.Add(PackParam(p7));
+            paramList.Add(PackParam(p8));
             BroadcastFrameDelay(id, paramList);
         }
 
@@ -408,16 +408,16 @@ namespace XD.Common.Event
         public void BroadcastFrameDelay<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>(in EventIdentify id, T0? p0, T1? p1, T2? p2, T3? p3, T4? p4, T5? p5, T6? p6, T7? p7, T8? p8, T9? p9)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
-            paramList.Add(NewValuePack(p2));
-            paramList.Add(NewValuePack(p3));
-            paramList.Add(NewValuePack(p4));
-            paramList.Add(NewValuePack(p5));
-            paramList.Add(NewValuePack(p6));
-            paramList.Add(NewValuePack(p7));
-            paramList.Add(NewValuePack(p8));
-            paramList.Add(NewValuePack(p9));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
+            paramList.Add(PackParam(p2));
+            paramList.Add(PackParam(p3));
+            paramList.Add(PackParam(p4));
+            paramList.Add(PackParam(p5));
+            paramList.Add(PackParam(p6));
+            paramList.Add(PackParam(p7));
+            paramList.Add(PackParam(p8));
+            paramList.Add(PackParam(p9));
             BroadcastFrameDelay(id, paramList);
         }
 
@@ -426,17 +426,17 @@ namespace XD.Common.Event
         public void BroadcastFrameDelay<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(in EventIdentify id, T0? p0, T1? p1, T2? p2, T3? p3, T4? p4, T5? p5, T6? p6, T7? p7, T8? p8, T9? p9, T10? p10)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
-            paramList.Add(NewValuePack(p2));
-            paramList.Add(NewValuePack(p3));
-            paramList.Add(NewValuePack(p4));
-            paramList.Add(NewValuePack(p5));
-            paramList.Add(NewValuePack(p6));
-            paramList.Add(NewValuePack(p7));
-            paramList.Add(NewValuePack(p8));
-            paramList.Add(NewValuePack(p9));
-            paramList.Add(NewValuePack(p10));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
+            paramList.Add(PackParam(p2));
+            paramList.Add(PackParam(p3));
+            paramList.Add(PackParam(p4));
+            paramList.Add(PackParam(p5));
+            paramList.Add(PackParam(p6));
+            paramList.Add(PackParam(p7));
+            paramList.Add(PackParam(p8));
+            paramList.Add(PackParam(p9));
+            paramList.Add(PackParam(p10));
             BroadcastFrameDelay(id, paramList);
         }
 
@@ -445,18 +445,18 @@ namespace XD.Common.Event
         public void BroadcastFrameDelay<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(in EventIdentify id, T0? p0, T1? p1, T2? p2, T3? p3, T4? p4, T5? p5, T6? p6, T7? p7, T8? p8, T9? p9, T10? p10, T11? p11)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
-            paramList.Add(NewValuePack(p2));
-            paramList.Add(NewValuePack(p3));
-            paramList.Add(NewValuePack(p4));
-            paramList.Add(NewValuePack(p5));
-            paramList.Add(NewValuePack(p6));
-            paramList.Add(NewValuePack(p7));
-            paramList.Add(NewValuePack(p8));
-            paramList.Add(NewValuePack(p9));
-            paramList.Add(NewValuePack(p10));
-            paramList.Add(NewValuePack(p11));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
+            paramList.Add(PackParam(p2));
+            paramList.Add(PackParam(p3));
+            paramList.Add(PackParam(p4));
+            paramList.Add(PackParam(p5));
+            paramList.Add(PackParam(p6));
+            paramList.Add(PackParam(p7));
+            paramList.Add(PackParam(p8));
+            paramList.Add(PackParam(p9));
+            paramList.Add(PackParam(p10));
+            paramList.Add(PackParam(p11));
             BroadcastFrameDelay(id, paramList);
         }
 
@@ -465,19 +465,19 @@ namespace XD.Common.Event
         public void BroadcastFrameDelay<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(in EventIdentify id, T0? p0, T1? p1, T2? p2, T3? p3, T4? p4, T5? p5, T6? p6, T7? p7, T8? p8, T9? p9, T10? p10, T11? p11, T12? p12)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
-            paramList.Add(NewValuePack(p2));
-            paramList.Add(NewValuePack(p3));
-            paramList.Add(NewValuePack(p4));
-            paramList.Add(NewValuePack(p5));
-            paramList.Add(NewValuePack(p6));
-            paramList.Add(NewValuePack(p7));
-            paramList.Add(NewValuePack(p8));
-            paramList.Add(NewValuePack(p9));
-            paramList.Add(NewValuePack(p10));
-            paramList.Add(NewValuePack(p11));
-            paramList.Add(NewValuePack(p12));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
+            paramList.Add(PackParam(p2));
+            paramList.Add(PackParam(p3));
+            paramList.Add(PackParam(p4));
+            paramList.Add(PackParam(p5));
+            paramList.Add(PackParam(p6));
+            paramList.Add(PackParam(p7));
+            paramList.Add(PackParam(p8));
+            paramList.Add(PackParam(p9));
+            paramList.Add(PackParam(p10));
+            paramList.Add(PackParam(p11));
+            paramList.Add(PackParam(p12));
             BroadcastFrameDelay(id, paramList);
         }
 
@@ -486,20 +486,20 @@ namespace XD.Common.Event
         public void BroadcastFrameDelay<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(in EventIdentify id, T0? p0, T1? p1, T2? p2, T3? p3, T4? p4, T5? p5, T6? p6, T7? p7, T8? p8, T9? p9, T10? p10, T11? p11, T12? p12, T13? p13)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
-            paramList.Add(NewValuePack(p2));
-            paramList.Add(NewValuePack(p3));
-            paramList.Add(NewValuePack(p4));
-            paramList.Add(NewValuePack(p5));
-            paramList.Add(NewValuePack(p6));
-            paramList.Add(NewValuePack(p7));
-            paramList.Add(NewValuePack(p8));
-            paramList.Add(NewValuePack(p9));
-            paramList.Add(NewValuePack(p10));
-            paramList.Add(NewValuePack(p11));
-            paramList.Add(NewValuePack(p12));
-            paramList.Add(NewValuePack(p13));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
+            paramList.Add(PackParam(p2));
+            paramList.Add(PackParam(p3));
+            paramList.Add(PackParam(p4));
+            paramList.Add(PackParam(p5));
+            paramList.Add(PackParam(p6));
+            paramList.Add(PackParam(p7));
+            paramList.Add(PackParam(p8));
+            paramList.Add(PackParam(p9));
+            paramList.Add(PackParam(p10));
+            paramList.Add(PackParam(p11));
+            paramList.Add(PackParam(p12));
+            paramList.Add(PackParam(p13));
             BroadcastFrameDelay(id, paramList);
         }
 
@@ -508,21 +508,21 @@ namespace XD.Common.Event
         public void BroadcastFrameDelay<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(in EventIdentify id, T0? p0, T1? p1, T2? p2, T3? p3, T4? p4, T5? p5, T6? p6, T7? p7, T8? p8, T9? p9, T10? p10, T11? p11, T12? p12, T13? p13, T14? p14)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
-            paramList.Add(NewValuePack(p2));
-            paramList.Add(NewValuePack(p3));
-            paramList.Add(NewValuePack(p4));
-            paramList.Add(NewValuePack(p5));
-            paramList.Add(NewValuePack(p6));
-            paramList.Add(NewValuePack(p7));
-            paramList.Add(NewValuePack(p8));
-            paramList.Add(NewValuePack(p9));
-            paramList.Add(NewValuePack(p10));
-            paramList.Add(NewValuePack(p11));
-            paramList.Add(NewValuePack(p12));
-            paramList.Add(NewValuePack(p13));
-            paramList.Add(NewValuePack(p14));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
+            paramList.Add(PackParam(p2));
+            paramList.Add(PackParam(p3));
+            paramList.Add(PackParam(p4));
+            paramList.Add(PackParam(p5));
+            paramList.Add(PackParam(p6));
+            paramList.Add(PackParam(p7));
+            paramList.Add(PackParam(p8));
+            paramList.Add(PackParam(p9));
+            paramList.Add(PackParam(p10));
+            paramList.Add(PackParam(p11));
+            paramList.Add(PackParam(p12));
+            paramList.Add(PackParam(p13));
+            paramList.Add(PackParam(p14));
             BroadcastFrameDelay(id, paramList);
         }
 
@@ -531,22 +531,22 @@ namespace XD.Common.Event
         public void BroadcastFrameDelay<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(in EventIdentify id, T0? p0, T1? p1, T2? p2, T3? p3, T4? p4, T5? p5, T6? p6, T7? p7, T8? p8, T9? p9, T10? p10, T11? p11, T12? p12, T13? p13, T14? p14, T15? p15)
         {
             var paramList = NewParamList();
-            paramList.Add(NewValuePack(p0));
-            paramList.Add(NewValuePack(p1));
-            paramList.Add(NewValuePack(p2));
-            paramList.Add(NewValuePack(p3));
-            paramList.Add(NewValuePack(p4));
-            paramList.Add(NewValuePack(p5));
-            paramList.Add(NewValuePack(p6));
-            paramList.Add(NewValuePack(p7));
-            paramList.Add(NewValuePack(p8));
-            paramList.Add(NewValuePack(p9));
-            paramList.Add(NewValuePack(p10));
-            paramList.Add(NewValuePack(p11));
-            paramList.Add(NewValuePack(p12));
-            paramList.Add(NewValuePack(p13));
-            paramList.Add(NewValuePack(p14));
-            paramList.Add(NewValuePack(p15));
+            paramList.Add(PackParam(p0));
+            paramList.Add(PackParam(p1));
+            paramList.Add(PackParam(p2));
+            paramList.Add(PackParam(p3));
+            paramList.Add(PackParam(p4));
+            paramList.Add(PackParam(p5));
+            paramList.Add(PackParam(p6));
+            paramList.Add(PackParam(p7));
+            paramList.Add(PackParam(p8));
+            paramList.Add(PackParam(p9));
+            paramList.Add(PackParam(p10));
+            paramList.Add(PackParam(p11));
+            paramList.Add(PackParam(p12));
+            paramList.Add(PackParam(p13));
+            paramList.Add(PackParam(p14));
+            paramList.Add(PackParam(p15));
             BroadcastFrameDelay(id, paramList);
         }
 
