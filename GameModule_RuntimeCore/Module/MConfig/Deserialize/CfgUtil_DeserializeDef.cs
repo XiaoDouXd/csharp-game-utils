@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using XD.Common.Config.Helper;
 
 // ReSharper disable PartialTypeWithSinglePart
 
@@ -21,8 +22,13 @@ namespace XD.GameModule.Module.MConfig
 
         public readonly partial struct CommonTableCreateResult
         {
-            public readonly TableGroup[]? Value;
-            public CommonTableCreateResult(TableGroup[]? value) => Value = value;
+            public readonly long Version;
+            public readonly CfgHelper.TableGroup[]? Value;
+            public CommonTableCreateResult(CfgHelper.TableGroup[]? value, long version)
+            {
+                Value = value;
+                Version = version;
+            }
         }
 
         public readonly partial struct GlobalTableCreateResult
@@ -98,10 +104,10 @@ namespace XD.GameModule.Module.MConfig
             public bool ReadBool(ref SerializedData data, string? name = null);
             public bool? ReadBoolNullable(ref SerializedData data, string? name = null);
 
-            public Id ReadId(ref SerializedData data, string? name = null);
+            public CfgHelper.Id ReadId(ref SerializedData data, string? name = null);
 
-            public Link ReadLink(ref SerializedData data, string? name = null);
-            public Link? ReadLinkNullable(ref SerializedData data, string? name = null);
+            public CfgHelper.Link ReadLink(ref SerializedData data, string? name = null);
+            public CfgHelper.Link? ReadLinkNullable(ref SerializedData data, string? name = null);
 
             public TRet?[]? ReadArray<TRet>(ref SerializedData data, ConstructorFunc<TRet> constructor, string? name = null);
             public IReadOnlyDictionary<TKey, TValue>? ReadMap<TKey, TValue>(
@@ -211,13 +217,13 @@ namespace XD.GameModule.Module.MConfig
             public static bool? ConstructorBoolNullable(ref SerializedData data, IDeserializeMethod methods, string? name = null)
                 => methods.ReadBoolNullable(ref data, name);
 
-            public static Id ConstructorId(ref SerializedData data, IDeserializeMethod methods, string? name = null)
+            public static CfgHelper.Id ConstructorId(ref SerializedData data, IDeserializeMethod methods, string? name = null)
                 => methods.ReadId(ref data, name);
 
-            public static Link ConstructorLink(ref SerializedData data, IDeserializeMethod methods, string? name = null)
+            public static CfgHelper.Link ConstructorLink(ref SerializedData data, IDeserializeMethod methods, string? name = null)
                 => methods.ReadLink(ref data, name);
 
-            public static Link? ConstructorLinkNullable(ref SerializedData data, IDeserializeMethod methods, string? name = null)
+            public static CfgHelper.Link? ConstructorLinkNullable(ref SerializedData data, IDeserializeMethod methods, string? name = null)
                 => methods.ReadLinkNullable(ref data, name);
         }
 

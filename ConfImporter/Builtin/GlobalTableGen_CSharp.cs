@@ -40,6 +40,7 @@ namespace ConfImporter.Builtin
 
 using System;
 using System.Collections;
+using XD.Common.Config.Helper;
 using System.Collections.Generic;
 using XD.GameModule.Module.MConfig;
 

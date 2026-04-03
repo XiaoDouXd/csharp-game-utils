@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using MessagePack;
 using MessagePack.Formatters;
+using XD.Common.Config.Helper;
 
 // ReSharper disable UnassignedField.Global
 
@@ -230,7 +231,7 @@ namespace XD.GameModule.Module.MConfig
                 return data.Reader.TryReadNil() ? null : data.Reader.ReadBoolean();
             }
 
-            public Id ReadId(ref SerializedData data, string? _)
+            public CfgHelper.Id ReadId(ref SerializedData data, string? _)
             {
                 ref var reader = ref data.Reader;
                 if (reader.TryReadNil()) return default;
@@ -256,9 +257,9 @@ namespace XD.GameModule.Module.MConfig
                 }
             }
 
-            public Link ReadLink(ref SerializedData data, string? _) => ReadLinkNullable(ref data, _) ?? default;
+            public CfgHelper.Link ReadLink(ref SerializedData data, string? _) => ReadLinkNullable(ref data, _) ?? default;
 
-            public Link? ReadLinkNullable(ref SerializedData data, string? _)
+            public CfgHelper.Link? ReadLinkNullable(ref SerializedData data, string? _)
             {
                 ref var reader = ref data.Reader;
                 if (reader.TryReadNil()) return null;
@@ -307,14 +308,14 @@ namespace XD.GameModule.Module.MConfig
                             {
                                 reader.Depth--;
                                 return itemLong.HasValue
-                                    ? new Link(itemLong.Value, reader.ReadString())
-                                    : new Link(itemString, reader.ReadString());
+                                    ? new CfgHelper.Link(itemLong.Value, reader.ReadString())
+                                    : new CfgHelper.Link(itemString, reader.ReadString());
                             }
                             reader.Skip();
                         }
 
                         reader.Depth--;
-                        return itemLong.HasValue ? new Link(itemLong.Value) : new Link(itemString);
+                        return itemLong.HasValue ? new CfgHelper.Link(itemLong.Value) : new CfgHelper.Link(itemString);
                     }
                     case MessagePackType.Unknown:
                     case MessagePackType.Nil:
@@ -365,7 +366,7 @@ namespace XD.GameModule.Module.MConfig
                 if (length <= 1)
                 {
                     reader.Depth--;
-                    return new FakeDictionary<TKey, TValue>();
+                    return new CfgHelper.FakeDictionary<TKey, TValue>();
                 }
                 var ret = new Dictionary<TKey, TValue>(length);
                 var i = 1;

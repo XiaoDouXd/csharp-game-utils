@@ -26,6 +26,7 @@ namespace ConfImporter.Builtin
 
 using System;
 using System.Collections;
+using XD.Common.Config.Helper;
 using System.Collections.Generic;
 using XD.GameModule.Module.MConfig;
 
@@ -39,7 +40,7 @@ namespace {tableNamespace}
 ");
             var sbFunction = new StringBuilder();
             var sbTableCreator = new StringBuilder();
-            sbTableCreator.Append($@"{indent}{indent}{indent}var ret = new CfgUtil.TableGroup[]
+            sbTableCreator.Append($@"{indent}{indent}{indent}var ret = new CfgHelper.TableGroup[]
 {indent}{indent}{indent}{{
 ");
             var sbTempA = new StringBuilder();
@@ -66,16 +67,17 @@ namespace {tableNamespace}
             sbFunction.Append(indent)
                 .Append($@"public static partial class ____cfgGenFunction
 {indent}{{
-{indent}{indent}private class ____ : CfgUtil.CfgTableItemBase {{ public override CfgUtil.Id Id => default; }}
+{indent}{indent}private class ____ : CfgHelper.CfgTableItemBase {{ public override CfgHelper.Id Id => default; }}
 {indent}{indent}public static CfgUtil.CommonTableCreateResult CreateCommonTables(ref CfgUtil.SerializedData data, CfgUtil.IDeserializeMethod method)
 {indent}{indent}{{
 {indent}{indent}{indent}if (method == null) return default;
 {indent}{indent}{indent}var version = method.BeginScope(ref data);
 {indent}{indent}{indent}if (version == 0) {{ method.EndScope(ref data); return default; }}
-{indent}{indent}{indent}if (CfgUtil.____tableInfoCache<____>.Id == 0)
-{indent}{indent}{indent}{{
-{indent}{indent}{indent}{indent}CfgUtil.____tableInfoCache<CfgUtil.VERSION>.Id = version;
 ");
+// {indent}{indent}{indent}if (CfgUtil.____tableInfoCache<____>.Id == 0)
+// {indent}{indent}{indent}{{
+// {indent}{indent}{indent}{indent}CfgUtil.____tableInfoCache<CfgUtil.VERSION>.Id = version;
+// ");
             var tableIdx = 0;
             foreach (var inst in cfgList)
             {
@@ -94,7 +96,7 @@ namespace {tableNamespace}
                 sb.Append(indent)
                     .Append("public class ")
                     .Append(tableName)
-                    .Append(" : CfgUtil.CfgTableItemBase\n")
+                    .Append(" : CfgHelper.CfgTableItemBase\n")
                     .Append(indent).Append("{\n");
                 sb.Append($"{indent}{indent}public override string? __Name => \"{inst.Name}\";\n");
                 sbInterface.Append($@"{indent}{indent}public override bool __TryGet<T>(string name, out T value)
@@ -207,16 +209,16 @@ namespace {tableNamespace}
 ");
 
 
-                sbFunction.Append($"{indent}{indent}{indent}{indent}CfgUtil.____tableInfoCache<{tableName}>.Id = {tableIdx + 1};\n");
+                // sbFunction.Append($"{indent}{indent}{indent}{indent}CfgUtil.____tableInfoCache<{tableName}>.Id = {tableIdx + 1};\n");
                 sbTableCreator.Append(
-                    $"{indent}{indent}{indent}{indent}new CfgUtil.TableGroup<{tableName}?>(ref data, method, CfgUtil.StructConstructorFuncUtils.Construct<{tableName}?, {tableName}.____constructor>, \"{inst.Name}\", new []{{{sbTempC}}}),\n");
+                    $"{indent}{indent}{indent}{indent}CfgUtil.TableGroupConstructor<{tableName}?>.New(ref data, method, CfgUtil.StructConstructorFuncUtils.Construct<{tableName}?, {tableName}.____constructor>, \"{inst.Name}\", new []{{{sbTempC}}}),\n");
                 tableIdx++;
             }
 
             sb.Append("\n").Append(sbFunction);
-            sb.Append($"{indent}{indent}{indent}{indent}CfgUtil.____tableInfoCache<____>.Id = -1;\n{indent}{indent}{indent}}}\n");
+            // sb.Append($"{indent}{indent}{indent}{indent}CfgUtil.____tableInfoCache<____>.Id = -1;\n{indent}{indent}{indent}}}\n");
             sb.Append(sbTableCreator);
-            sb.Append($"{indent}{indent}{indent}}};\n{indent}{indent}{indent}method.EndScope(ref data);\n{indent}{indent}{indent}return new CfgUtil.CommonTableCreateResult(ret);\n{indent}{indent}}}\n{indent}}}\n");
+            sb.Append($"{indent}{indent}{indent}}};\n{indent}{indent}{indent}method.EndScope(ref data);\n{indent}{indent}{indent}return new CfgUtil.CommonTableCreateResult(ret, version);\n{indent}{indent}}}\n{indent}}}\n");
             sb.Append("}\n");
             using var f = File.Create(Conf.CodeOutputTargetDir + "/CfgGenTable.cs");
             using var fWriter = new StreamWriter(f);

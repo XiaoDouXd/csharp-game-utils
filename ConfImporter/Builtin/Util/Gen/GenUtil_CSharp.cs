@@ -20,7 +20,7 @@ namespace ConfImporter.Builtin.Util
 
             sbA.Append(baseIndent).Append("public readonly struct ");
             var id = type.GetTypeIdentity(sbA, sbB, true);
-            sbA.Append(" : CfgUtil.ICustomStruct\n").Append(baseIndent).Append('{').Append('\n');
+            sbA.Append(" : CfgHelper.ICustomStruct\n").Append(baseIndent).Append('{').Append('\n');
 
             // 写入字段
             for (var i = 0; i < type.FieldCount; i++)
@@ -127,7 +127,7 @@ namespace ConfImporter.Builtin.Util
 
         public static string GetFieldType(TypeInfo.EBaseType type, TypeInfo.ETypeFlag flag, bool isId)
         {
-            if (isId && type.IsTypeCanBeId()) return "CfgUtil.Id";
+            if (isId && type.IsTypeCanBeId()) return "CfgHelper.Id";
             var ret = type switch
             {
                 TypeInfo.EBaseType.Bool => "bool",
@@ -142,7 +142,7 @@ namespace ConfImporter.Builtin.Util
                 TypeInfo.EBaseType.Float32 => "float",
                 TypeInfo.EBaseType.Float64 => "double",
                 TypeInfo.EBaseType.String => "string",
-                TypeInfo.EBaseType.Link => "CfgUtil.Link",
+                TypeInfo.EBaseType.Link => "CfgHelper.Link",
                 TypeInfo.EBaseType.Enum => "string",
                 _ => "_"
             };

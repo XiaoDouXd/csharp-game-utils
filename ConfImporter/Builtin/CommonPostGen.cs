@@ -28,6 +28,7 @@ namespace ConfImporter.Builtin
                 var sb = new StringBuilder();
                 sb.Append(@"#nullable enable
 
+using XD.Common.Config.Helper;
 using XD.GameModule.Module.MConfig;
 
 // ReSharper disable All

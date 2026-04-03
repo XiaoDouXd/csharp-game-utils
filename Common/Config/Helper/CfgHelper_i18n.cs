@@ -1,8 +1,8 @@
 ﻿// ReSharper disable InconsistentNaming
 // ReSharper disable UnusedMember.Global
-namespace XD.GameModule.Module.MConfig
+namespace XD.Common.Config.Helper
 {
-    public static partial class CfgUtil
+    public static partial class CfgHelper
     {
         public enum ELocaleCode : ushort
         {
