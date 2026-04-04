@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using XD.Common.CollectionUtil;
+using XD.Common.Log;
 using XD.Common.Procedure;
 using XD.Common.ScopeUtil;
 
@@ -568,7 +569,9 @@ namespace XD.GameModule.Module.MTick
                     continue;
                 }
 
-                var ret = info.Tick(info, dt, rdt);
+                var ret = false;
+                try { ret = info.Tick(info, dt, rdt); } catch (Exception e) { Log.Error(e); }
+
                 if (info.CallCnt == ulong.MaxValue) info.CallCnt = 1;
                 else info.CallCnt++;
                 info.LastCallDeltaTime = 0;
@@ -594,7 +597,9 @@ namespace XD.GameModule.Module.MTick
                     continue;
                 }
 
-                var ret = info.Tick(info, dt, rdt);
+                var ret = false;
+                try { ret = info.Tick(info, dt, rdt); } catch (Exception e) { Log.Error(e); }
+
                 if (info.CallCnt == ulong.MaxValue) info.CallCnt = 1;
                 else info.CallCnt++;
                 info.LastCallDeltaTime = 0;
@@ -620,7 +625,9 @@ namespace XD.GameModule.Module.MTick
                     continue;
                 }
 
-                var ret = info.Tick(info, dt, rdt);
+                var ret = false;
+                try { ret = info.Tick(info, dt, rdt); } catch (Exception e) { Log.Error(e); }
+
                 if (info.CallCnt == ulong.MaxValue) info.CallCnt = 1;
                 else info.CallCnt++;
                 info.LastCallDeltaTime = 0;

@@ -15,12 +15,12 @@ namespace XD.Common.AsyncUtil
     public interface IAwaiter<out TResult> : INotifyCompletion
     {
         bool IsCompleted { get; }
-        TResult GetResult();
+        TResult? GetResult();
     }
 
     public interface IAwaiterWithoutIsCompleted<out TResult> : INotifyCompletion
     {
-        TResult GetResult();
+        TResult? GetResult();
     }
 
     public interface ICriticalAwaiter<out TResult> : IAwaiter<TResult>, ICriticalNotifyCompletion {}
