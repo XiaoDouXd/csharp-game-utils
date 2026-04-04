@@ -131,7 +131,7 @@ namespace SubsystemGenerator
                 var className = symbol.ClassSyntax.Identifier.Text;
                 var instName = "____subsystem_g_" + className;
 
-                var ns = GetNamespace(symbol.ClassSyntax);
+                var ns = GetNamespace(symbol.Class);
                 var layerValue = GetLayerValue(symbol.ClassSyntax);
                 var isLazy = HasSubsystemAttribute(symbol.Class, symbol.LazySubsystemAttr) != null;
 
@@ -158,7 +158,8 @@ namespace SubsystemGenerator
 
                 // 4. 构建注册代码
                 var opNamespace = parenType.ContainingNamespace.ToDisplayString();
-                var code = isLazy ? $@"namespace {opNamespace}
+                var code = isLazy ? $@"#pragma warning disable 0649
+namespace {opNamespace}
 {{
     public static partial class Sys
     {{
@@ -186,7 +187,8 @@ namespace SubsystemGenerator
             }}
         }}
     }}
-}}" : $@"namespace {opNamespace}
+}}" : $@"#pragma warning disable 0649
+namespace {opNamespace}
 {{
     public static partial class Sys
     {{
@@ -210,10 +212,10 @@ namespace SubsystemGenerator
         }
 
         // 辅助方法：获取命名空间
-        private static string GetNamespace(SyntaxNode node)
+        private static string GetNamespace(INamedTypeSymbol classSymbol)
         {
-            var namespaceDecl = node.Ancestors().OfType<NamespaceDeclarationSyntax>().FirstOrDefault();
-            return namespaceDecl?.Name.ToString() ?? "Global";
+            var ns = classSymbol.ContainingNamespace;
+            return ns is { IsGlobalNamespace: false } ? ns.ToDisplayString() : "Global";
         }
 
         // 辅助方法：获取Layer参数值
