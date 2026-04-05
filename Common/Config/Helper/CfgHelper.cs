@@ -57,7 +57,7 @@ namespace XD.Common.Config.Helper
             public int Count => Items.Count;
             public IEnumerable<Id> Keys => _dict.Keys;
             public IEnumerable<TItem> Values => Items;
-            public TItem this[Id key] => _dict[key];
+            public TItem this[Id key] => _dict.TryGetValue(key, out var v) ? v : null!;
             public bool ContainsKey(Id key) => _dict.ContainsKey(key);
             public bool TryGetValue(Id key, out TItem value) => _dict.TryGetValue(key, out value);
             IEnumerator IEnumerable.GetEnumerator() => _dict.GetEnumerator();
@@ -184,7 +184,9 @@ namespace XD.Common.Config.Helper
                 return false;
             }
 
-            public Table<TItem> this[string key] => _tableInstDict == null ? Default : _tableInstDict[key];
+            public Table<TItem> this[string key] => _tableInstDict == null
+                ? Default.Id == key ? Default : null!
+                : _tableInstDict.TryGetValue(key, out var v) ? v : null!;
             public IEnumerable<string> Keys => _tableInstDict == null
                 ? new SingleEnumerable<string>(Default.Id)
                 : _tableInstDict.Keys;

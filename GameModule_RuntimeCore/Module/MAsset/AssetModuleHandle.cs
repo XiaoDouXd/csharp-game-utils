@@ -83,8 +83,9 @@ namespace XD.GameModule.Module.MAsset
                 if (IsCompleted) return;
                 Asset = asset;
                 IsCompleted = true;
-                _onComplete?.Invoke();
+                var onComplete = _onComplete;
                 _onComplete = null;
+                onComplete?.Invoke();
             }
 
             private AssetHandle<T>? _assetHandle;
@@ -108,18 +109,23 @@ namespace XD.GameModule.Module.MAsset
                 // check dispose
                 if (IsDisposed) return;
                 _assetHandle?.AntiApply(this);
-                OnDisposed();
 
                 // clear asset state
                 Asset = default;
                 IsInvalid = true;
                 _assetHandle = null;
 
+                try { OnDisposed(); }
+                catch (Exception e) { Log.Error(e); }
+
                 // clear fin state
                 if (IsCompleted) return;
                 IsCompleted = true;
-                _onComplete?.Invoke();
+                var onComplete = _onComplete;
                 _onComplete = null;
+
+                // call fin
+                onComplete?.Invoke();
             }
             #endregion
         }
