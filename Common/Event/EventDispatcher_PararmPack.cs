@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using XD.Common.ScopeUtil;
 
@@ -41,9 +42,13 @@ namespace XD.Common.Event
                 // 确定是否为非托管类型
                 ret._isUnmanaged = (ret._type = typeof(T)).IsUnmanaged();
                 if (ret._isUnmanaged)
-                {   // 若为非托管类型则申请一块内存, 其生命周期交由 Pack 管理
-                    ret._valuePtr = Marshal.AllocHGlobal(Marshal.SizeOf(data));
-                    Marshal.StructureToPtr(data, ret._valuePtr, false);
+                {
+                    // 使用 Unsafe.SizeOf/Write 替代 Marshal 系列:
+                    // - 支持枚举类型（Marshal.SizeOf 不支持）
+                    // - 零拆装箱（全程泛型操作）
+                    var size = Unsafe.SizeOf<T>();
+                    ret._valuePtr = Marshal.AllocHGlobal(size);
+                    unsafe { Unsafe.Write(ret._valuePtr.ToPointer(), data); }
                 }
                 else ret._valueObj = data;
                 return ret;
@@ -56,7 +61,8 @@ namespace XD.Common.Event
 
                 // 非托管类型从指针获取数据
                 if (_valuePtr == IntPtr.Zero) return default!;
-                return typeof(T) == _type ? Marshal.PtrToStructure<T>(_valuePtr) : default!;
+                if (typeof(T) != _type) return default!;
+                unsafe { return Unsafe.ReadUnaligned<T>(ref Unsafe.AsRef<byte>(_valuePtr.ToPointer())); }
             }
 
             public void Dispose()
