@@ -479,7 +479,7 @@ namespace XD.GameModule.Module.MTick
             #endregion
         }
 
-        private readonly struct RegInfo
+        private class RegInfo
         {
             public enum RegType : byte
             {
