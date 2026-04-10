@@ -559,6 +559,7 @@ namespace XD.GameModule.Module.MTick
             CheckRegister();
             CheckUnregister();
 
+            OnTickDirect?.Invoke(dt, rdt);
             // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
             foreach (var info in _instUpd.Values)
             {
@@ -579,7 +580,6 @@ namespace XD.GameModule.Module.MTick
                 var maxCallCnt = info.GetMaxCallCnt(info);
                 if (!ret || (maxCallCnt > 0 && info.CallCnt >= (ulong)maxCallCnt)) Unregister(info.Source);
             }
-            OnTickDirect?.Invoke(dt, rdt);
         }
 
         private unsafe void OnPhysicalTick(float dt, float rdt)
@@ -587,6 +587,7 @@ namespace XD.GameModule.Module.MTick
             CheckRegister();
             CheckUnregister();
 
+            OnPhysicalTickDirect?.Invoke(dt, rdt);
             // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
             foreach (var info in _instFixedUpd.Values)
             {
@@ -607,7 +608,6 @@ namespace XD.GameModule.Module.MTick
                 var maxCallCnt = info.GetMaxCallCnt(info);
                 if (!ret || (maxCallCnt > 0 && info.CallCnt >= (ulong)maxCallCnt)) Unregister(info.Source);
             }
-            OnPhysicalTickDirect?.Invoke(dt, rdt);
         }
 
         private unsafe void OnLateTick(float dt, float rdt)
@@ -615,6 +615,7 @@ namespace XD.GameModule.Module.MTick
             CheckRegister();
             CheckUnregister();
 
+            OnLateTickDirect?.Invoke(dt, rdt);
             // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
             foreach (var info in _instLateUpd.Values)
             {
@@ -635,7 +636,6 @@ namespace XD.GameModule.Module.MTick
                 var maxCallCnt = info.GetMaxCallCnt(info);
                 if (!ret || (maxCallCnt > 0 && info.CallCnt >= (ulong)maxCallCnt)) Unregister(info.Source);
             }
-            OnLateTickDirect?.Invoke(dt, rdt);
         }
 
         private void CheckUnregister()
