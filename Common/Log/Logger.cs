@@ -43,6 +43,9 @@ namespace XD.Common.Log
             Logger?.Invoke(ELogLevel.Error, info ?? "null");
         }
 
+        public static string GetStackTrace() => Environment.StackTrace;
+
+
         // ReSharper disable once MemberCanBePrivate.Global
         // ReSharper disable once FieldCanBeMadeReadOnly.Global
         public static Action<ELogLevel, object?>? Logger = null;
