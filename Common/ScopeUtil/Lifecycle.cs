@@ -65,4 +65,17 @@
         /// </summary>
         public void OnDeinit();
     }
+
+    public interface IInit<in T> : IInit
+    {
+        /// <summary>
+        /// 初始化时调用
+        /// </summary>
+        public void OnInit(T? param);
+
+        /// <summary>
+        /// 反初始化时调用, 和 dispose 的语义不同, 这里保留重新初始化的可能性
+        /// </summary>
+        public void OnDeinit(T? param);
+    }
 }
