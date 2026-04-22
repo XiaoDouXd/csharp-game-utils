@@ -87,14 +87,10 @@ namespace XD.Common.AsyncUtil
         public static Awaiter All(params IAwaiter?[] awaitableList) => All((IReadOnlyCollection<IAwaiter?>)awaitableList);
         public static Awaiter All(IReadOnlyCollection<IAwaiter?>? awaitableList)
         {
-            var result = new Awaiter();
             var count = awaitableList?.Count ?? 0;
-            if (count == 0)
-            {
-                result.Complete();
-                return result;
-            }
+            if (count == 0) return Awaiter.Completed;
 
+            var result = new Awaiter();
             foreach (var awaitable in awaitableList!)
             {
                 if (awaitable == null)
@@ -169,16 +165,12 @@ namespace XD.Common.AsyncUtil
             return count == 0 ? Awaiter<T>.Completed : result;
         }
 
-        public static Awaiter Race(params IAwaiter[] awaitableList) => Race((IReadOnlyCollection<IAwaiter?>)awaitableList);
+        public static Awaiter Race(params IAwaiter?[] awaitableList) => Race((IReadOnlyCollection<IAwaiter?>)awaitableList);
         public static Awaiter Race(IReadOnlyCollection<IAwaiter?>? awaitableList)
         {
-            var result = new Awaiter();
-            if (awaitableList is not { Count: > 0 })
-            {
-                result.Complete();
-                return result;
-            }
+            if (awaitableList is not { Count: > 0 }) return Awaiter.Completed;
 
+            var result = new Awaiter();
             var notAllNull = false;
             foreach (var awaitable in awaitableList)
             {
@@ -197,13 +189,9 @@ namespace XD.Common.AsyncUtil
         public static Awaiter<T> Race<T>(params IAwaiter<T>[] awaitableList) => Race((IReadOnlyCollection<IAwaiter<T>>)awaitableList);
         public static Awaiter<T> Race<T>(IReadOnlyCollection<IAwaiter<T>>? awaitableList)
         {
-            var result = new Awaiter<T>();
-            if (awaitableList is not { Count: > 0 })
-            {
-                result.Complete(default);
-                return result;
-            }
+            if (awaitableList is not { Count: > 0 }) return Awaiter<T>.Completed;
 
+            var result = new Awaiter<T>();
             var notAllNull = false;
             foreach (var awaitable in awaitableList)
             {
@@ -219,28 +207,30 @@ namespace XD.Common.AsyncUtil
             return result;
         }
 
-        public static Awaiter Then(this IAwaiter? awaitable, Action? continuation)
+        public static Awaiter Then(this IAwaitable<IAwaiter>? awaitable, Action? continuation)
         {
-            if (awaitable == null || awaitable.IsCompleted)
+            var awaiter = awaitable?.GetAwaiter();
+            if (awaiter == null || awaiter.IsCompleted)
             {
                 continuation?.Invoke();
                 return Awaiter.Completed;
             }
 
             var result = new Awaiter();
-            awaitable.OnCompleted(() =>
+            awaiter.OnCompleted(() =>
             {
                 continuation?.Invoke();
                 result.Complete();
             });
             return result;
         }
-        public static Awaiter<TOut> Then<TOut>(this IAwaiter? awaitable, Func<TOut?>? continuation)
+        public static Awaiter<TOut> Then<TOut>(this IAwaitable<IAwaiter>? awaitable, Func<TOut?>? continuation)
         {
-            if (awaitable == null || awaitable.IsCompleted)
+            var awaiter = awaitable?.GetAwaiter();
+            if (awaiter == null || awaiter.IsCompleted)
             {
                 var outResult = continuation == null ? default : continuation.Invoke();
-                if (outResult == null || EqualityComparer<TOut>.Default.Equals(outResult, default!)) return Awaiter<TOut>.Completed;
+                if (continuation == null || outResult == null) return Awaiter<TOut>.Completed;
 
                 var tout = new Awaiter<TOut>();
                 tout.Complete(outResult);
@@ -248,20 +238,21 @@ namespace XD.Common.AsyncUtil
             }
 
             var result = new Awaiter<TOut>();
-            awaitable.OnCompleted(() =>
+            awaiter.OnCompleted(() =>
             {
                 var outResult = continuation == null ? default : continuation.Invoke();
                 result.Complete(outResult);
             });
             return result;
         }
-        public static Awaiter<TOut> Then<T, TOut>(this IAwaiter<T>? awaitable, Func<T?, TOut?>? continuation)
+        public static Awaiter<TOut> Then<T, TOut>(this IAwaitable<IAwaiter<T>, T>? awaitable, Func<T?, TOut?>? continuation)
         {
-            if (awaitable == null || awaitable.IsCompleted)
+            var awaiter = awaitable?.GetAwaiter();
+            if (awaiter == null || awaiter.IsCompleted)
             {
-                var inResult = awaitable == null ? default : awaitable.GetResult();
+                var inResult = awaiter == null ? default : awaiter.GetResult();
                 var outResult = continuation == null ? default : continuation.Invoke(inResult);
-                if (outResult == null || EqualityComparer<TOut>.Default.Equals(outResult, default!)) return Awaiter<TOut>.Completed;
+                if (continuation == null || outResult == null) return Awaiter<TOut>.Completed;
 
                 var tout = new Awaiter<TOut>();
                 tout.Complete(outResult);
@@ -269,21 +260,22 @@ namespace XD.Common.AsyncUtil
             }
 
             var result = new Awaiter<TOut>();
-            awaitable.OnCompleted(() =>
+            awaiter.OnCompleted(() =>
             {
-                var inResult = awaitable.GetResult();
+                var inResult = awaiter.GetResult();
                 var outResult = continuation == null ? default : continuation.Invoke(inResult);
                 result.Complete(outResult);
             });
             return result;
         }
-        public static Awaiter Then<T>(this IAwaiter<T>? awaitable, Action<T?>? continuation)
+        public static Awaiter Then<T>(this IAwaitable<IAwaiter<T>, T>? awaitable, Action<T?>? continuation)
         {
-            if (awaitable == null || awaitable.IsCompleted) return Awaiter.Completed;
+            var awaiter = awaitable?.GetAwaiter();
+            if (awaiter == null || awaiter.IsCompleted) return Awaiter.Completed;
             var result = new Awaiter();
-            awaitable.OnCompleted(() =>
+            awaiter.OnCompleted(() =>
             {
-                continuation?.Invoke(awaitable.GetResult());
+                continuation?.Invoke(awaiter.GetResult());
                 result.Complete();
             });
             return result;

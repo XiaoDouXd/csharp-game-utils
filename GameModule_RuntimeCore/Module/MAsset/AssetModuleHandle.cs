@@ -50,7 +50,7 @@ namespace XD.GameModule.Module.MAsset
             public void Dispose() {}
             public void AddOnDispose(Action? callback) => callback?.Invoke();
             public void RemoveOnDispose(Action? callback) {}
-            public void Bind(IXDDisposable? disposable = null) {}
+            public IXDDisposable Bind(IXDDisposable? disposable = null) => this;
 
             public T? GetResult() => default;
             public IAssetHolder<T> GetAwaiter() => this;

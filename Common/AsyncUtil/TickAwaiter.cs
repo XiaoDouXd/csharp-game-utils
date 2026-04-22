@@ -8,7 +8,7 @@ namespace XD.Common.AsyncUtil
     /// <summary>
     /// 把可能在子线程中的异步 task 拉到 update 线程中. 适用方法:
     /// <example>
-    /// await E.Upd.Register(new UpdateTask(asyncTask));
+    /// await E.Tick.Register(new UpdateTask(asyncTask));
     /// </example>
     /// </summary>
     public sealed class TickTask : XDObject, ITick, IAwaiter, IAwaitable<TickTask>
@@ -49,7 +49,7 @@ namespace XD.Common.AsyncUtil
     /// <summary>
     /// 把可能在子线程中的异步 task 拉到 update 线程中. 适用方法:
     /// <example>
-    /// var t = await E.Upd.Register(new UpdateTask(asyncTask));
+    /// var t = await E.Tick.Register(new UpdateTask(asyncTask));
     /// </example>
     /// </summary>
     public sealed class TickTask<T> : XDObject, ITick, IAwaiter<T>, IAwaitable<TickTask<T>, T>

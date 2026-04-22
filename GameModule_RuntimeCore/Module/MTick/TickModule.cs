@@ -20,12 +20,19 @@ namespace XD.GameModule.Module.MTick
     {
         public delegate void TickFunc(float dt, float rdt);
 
-        public sealed class TickFuncHandle : IPolling, IDisposableWithFlag
+        public sealed class TickFuncHandle : XDDisposableObjectBase, IPolling
         {
             // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
-            public bool IsDisposed => E.Tick == null || !E.Tick.Contains(this);
+            public new bool IsDisposed => E.Tick == null || !E.Tick.Contains(this) || base.IsDisposed;
             // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
-            public void Dispose() => E.Tick?.Unregister(this);
+            public override void Dispose()
+            {
+                if (!IsDisposed) E.Tick?.Unregister(this);
+
+                if (base.IsDisposed) return;
+                try { OnDisposed(); }
+                finally { GC.SuppressFinalize(this); }
+            }
         }
 
         private const int CallbackInfoPoolSize = 2048;
@@ -250,8 +257,11 @@ namespace XD.GameModule.Module.MTick
                 Del(instLateUpd);
                 _instLateUpd.Remove(id, out _);
             }
-
             lock (_regInfoDict) _regInfoDict.Remove(obj, out _);
+
+            // Clean up TickFuncHandle
+            try { if (obj is TickFuncHandle handle) handle.Dispose(); }
+            catch (Exception e) { Log.Error($"TickFuncHandle.Dispose() failed: {e}"); }
         }
 
         private bool CheckRegisteredObjectAndRemoveUnregisterReq(IPolling? obj)

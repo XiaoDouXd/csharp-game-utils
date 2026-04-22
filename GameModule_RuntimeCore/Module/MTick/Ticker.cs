@@ -1,4 +1,5 @@
 ﻿using System;
+using XD.Common.AsyncUtil;
 using XD.Common.FunctionalUtil;
 using XD.Common.ScopeUtil;
 
@@ -10,9 +11,6 @@ using XD.Common.ScopeUtil;
 
 namespace XD.GameModule.Module.MTick
 {
-    /// <summary>
-    /// 刷新器
-    /// </summary>
     public sealed class Ticker : XDObject
     {
         public static int PoolSize { get; set; } = 512;
@@ -113,9 +111,6 @@ namespace XD.GameModule.Module.MTick
         private readonly TickerInner _inner;
     }
 
-    /// <summary>
-    ///
-    /// </summary>
     public sealed class PhysicalTicker : XDObject
     {
         public static int PoolSize { get; set; } = 512;
@@ -324,5 +319,30 @@ namespace XD.GameModule.Module.MTick
             public Action<float, float>? ActionWithParam;
         }
         private readonly TickerInner _inner;
+    }
+
+    public sealed class Delay : XDObject, IAwaitable<IAwaiter>, IAwaiter
+    {
+        public Delay() : this(0) {}
+        public Delay(float delay) => E.Tick?.Delay(Complete, delay)?.Bind(this);
+
+        public IAwaiter GetAwaiter() => this;
+        public void OnCompleted(Action continuation)
+        {
+            if (IsCompleted) continuation();
+            else OnCompletedDelegate += continuation;
+        }
+
+        public bool IsCompleted { get; private set; }
+        public void GetResult() {}
+
+        private void Complete()
+        {
+            if (IsCompleted) return;
+            IsCompleted = true;
+            OnCompletedDelegate?.Invoke();
+            OnCompletedDelegate = null;
+        }
+        private event Action? OnCompletedDelegate;
     }
 }

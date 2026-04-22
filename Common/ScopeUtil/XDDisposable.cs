@@ -26,7 +26,7 @@ namespace XD.Common.ScopeUtil
         /// 绑定到目标 IXDDisposable (在目标 dispose 后 dispose 当前对象)
         /// </summary>
         /// <param name="disposable"></param>
-        public void Bind(IXDDisposable? disposable = null);
+        public IXDDisposable Bind(IXDDisposable? disposable = null);
     }
 
     /// <summary>
@@ -65,10 +65,10 @@ namespace XD.Common.ScopeUtil
             OnDisposeCallback -= callback;
         }
 
-        public void Bind(IXDDisposable? disposable = null)
+        public IXDDisposable Bind(IXDDisposable? disposable = null)
         {
             // check disposed state
-            if (IsDisposed) return;
+            if (IsDisposed) return this;
 
             // unbind
             if (_bindTarget != null)
@@ -76,11 +76,12 @@ namespace XD.Common.ScopeUtil
                 _bindTarget.RemoveOnDispose(Dispose);
                 _bindTarget = null;
             }
-            if (disposable == null) return;
+            if (disposable == null) return this;
 
             // bind
             if (disposable.IsDisposed) Dispose();
             else (_bindTarget = disposable).AddOnDispose(Dispose);
+            return this;
         }
 
         /// <summary>
@@ -108,7 +109,7 @@ namespace XD.Common.ScopeUtil
         /// <summary>
         /// 如果 dispose 未调用, 这里做一个兜底
         /// </summary>
-        ~XDDisposableObjectBase() => Dispose();
+        ~XDDisposableObjectBase() => OnDisposed();
 
         private IXDDisposable? _bindTarget;
         private event Action? OnDisposeCallback;
