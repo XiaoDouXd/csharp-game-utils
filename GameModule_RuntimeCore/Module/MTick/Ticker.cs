@@ -6,35 +6,60 @@ using XD.Common.ScopeUtil;
 // ReSharper disable UnusedMember.Global
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable UnusedAutoPropertyAccessor.Global
-// ReSharper disable ConvertConstructorToMemberInitializers
 // ReSharper disable ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
 
 namespace XD.GameModule.Module.MTick
 {
+    // ============================================================================================
+    // Ticker / PhysicalTicker / LateTicker 的弱引用语义
+    // --------------------------------------------------------------------------------------------
+    // 设计目标: 当外部业务代码不再引用 Ticker 时, tick 链应该能被 GC 回收并自动停止 tick,
+    //         避免 "业务对象通过 Action/method group 被 _regInfoDict 强引用" 导致的隐式泄漏.
+    //
+    // 引用链:
+    //     业务对象 (e.g. Character)
+    //         ↓ 字段
+    //       Ticker: 业务持有, 唯一强引用源; 同时实现了 Cb/Action 的承载
+    //         ↑ 弱引用
+    //       WeakForwarder: 注册到 E.Tick 的就是这个 forwarder
+    //         ↑ _regInfoDict 强引用
+    //       TickModule
+    //
+    // 自动清理:
+    //     Ticker 被 GC -> WeakForwarder.TryGetTarget 失败 -> forwarder 下次 tick 时 Unregister 自己
+    //     -> _regInfoDict 不再持有 forwarder -> forwarder 也被 GC. 一次/两次 GC 内链路完整释放.
+    // ============================================================================================
+
+    /// <summary>
+    /// 基于 <see cref="TickModule"/> 的 Tick 驱动包装. 每个 <see cref="Ticker"/> 对应一条 ITick 订阅.
+    /// <para/>
+    /// 生命周期:
+    ///   - 业务显式 <see cref="Del"/> / <see cref="Dispose"/>: 立即 Unregister (强路径);
+    ///   - 业务丢弃引用: forwarder 自动检测并 Unregister (弱路径, 约两轮 GC);
+    ///   - 不使用终结器, 避免 GC 线程触碰 E.Tick.
+    /// </summary>
     public sealed class Ticker : XDObject
     {
-        public static int PoolSize { get; set; } = 512;
-
         public static Ticker New()
         {
-            var obj = NewInner();
-            E.Tick?.Register(obj._inner, false);
+            var obj = new Ticker();
+            E.Tick?.Register(obj._forwarder, false);
             return obj;
         }
 
         public static Ticker New(Action act)
         {
-            var obj = NewInner();
+            var obj = new Ticker();
             obj.SetTarget(act);
-            E.Tick?.Register(obj._inner, false);
+            E.Tick?.Register(obj._forwarder, false);
             return obj;
         }
 
         public static Ticker New(Action<float, float> act)
         {
-            var obj = NewInner();
+            var obj = new Ticker();
             obj.SetTarget(act);
-            E.Tick?.Register(obj._inner, false);
+            E.Tick?.Register(obj._forwarder, false);
             return obj;
         }
 
@@ -42,43 +67,31 @@ namespace XD.GameModule.Module.MTick
         {
             if (obj == null) return;
             obj.SetTarget();
-            E.Tick?.Unregister(obj._inner);
+            E.Tick?.Unregister(obj._forwarder);
         }
 
-        private static Ticker NewInner()
-        {
-            var obj = new Ticker();
-            obj.Interval = 0;
-            return obj;
-        }
-
-        public float Interval
-        {
-            get => _inner.TickInterval;
-            set => _inner.TickInterval = value;
-        }
+        /// <summary> tick 间隔 (秒, 0 表示每帧). </summary>
+        public float Interval { get; set; }
 
         public void SetTarget()
         {
-            _inner.Cb = F.Empty;
-            _inner.Action = null;
-            _inner.ActionWithParam = null;
+            _cb = F.Empty;
+            _action = null;
+            _actionWithParam = null;
         }
 
         public void SetTarget(Action? act)
         {
-            _inner.Action = act;
-            _inner.ActionWithParam = null;
-            if (act == null) _inner.Cb = F.Empty;
-            else _inner.Cb = _inner.OnUpdateWhite;
+            _action = act;
+            _actionWithParam = null;
+            _cb = act == null ? F.Empty : OnUpdateNoParam;
         }
 
         public void SetTarget(Action<float, float>? act)
         {
-            _inner.Action = null;
-            _inner.ActionWithParam = act;
-            if (act == null) _inner.Cb = F.Empty;
-            else _inner.Cb = _inner.OnUpdateWithParam;
+            _action = null;
+            _actionWithParam = act;
+            _cb = act == null ? F.Empty : OnUpdateWithParam;
         }
 
         public override void Dispose()
@@ -87,56 +100,73 @@ namespace XD.GameModule.Module.MTick
             base.Dispose();
         }
 
-        ~Ticker()
+        private Ticker()
         {
-            SetTarget();
-            E.Tick?.Unregister(_inner);
+            _cb = F.Empty;
+            _forwarder = new WeakForwarder(this);
         }
 
-        private Ticker() => _inner = new TickerInner();
+        // 实际回调: 通过 _cb 统一分派, 避免每帧判断 Action / Action<,> 分支.
+        private void OnTickInner(float dt, float rdt) => _cb(dt, rdt);
+        private void OnUpdateNoParam(float _, float __) => _action!();
+        private void OnUpdateWithParam(float dt, float rdt) => _actionWithParam!(dt, rdt);
 
-        private class TickerInner : ITick
+        private Action<float, float> _cb;
+        private Action? _action;
+        private Action<float, float>? _actionWithParam;
+
+        // forwarder 持有 WeakReference<Ticker>, 注册到 E.Tick. 不会强引用 this.
+        private readonly WeakForwarder _forwarder;
+
+        /// <summary>
+        /// 注册到 E.Tick 的 ITick 转发器. 对 Ticker 是弱引用,
+        /// 一旦 Ticker 被 GC, 自身在下一次 tick 时主动 Unregister.
+        /// </summary>
+        private sealed class WeakForwarder : ITick
         {
-            public float TickInterval { get; set; }
+            public float TickInterval =>
+                _weak.TryGetTarget(out var owner) ? owner.Interval : 0f;
 
-            public Action<float, float> Cb = F.Empty;
-            public void OnTick(float dt, float rdt) => Cb(dt, rdt);
+            public WeakForwarder(Ticker owner) => _weak = new WeakReference<Ticker>(owner);
 
-            public void OnUpdateWhite(float _, float __) => Action!();
-            public void OnUpdateWithParam(float dt, float rdt) => ActionWithParam!(dt, rdt);
+            public void OnTick(float dt, float rdt)
+            {
+                if (_weak.TryGetTarget(out var owner))
+                {
+                    owner.OnTickInner(dt, rdt);
+                    return;
+                }
+                E.Tick?.Unregister(this);
+            }
 
-            public Action? Action;
-            public Action<float, float>? ActionWithParam;
+            private readonly WeakReference<Ticker> _weak;
         }
-        private readonly TickerInner _inner;
     }
 
     public sealed class PhysicalTicker : XDObject
     {
-        public static int PoolSize { get; set; } = 512;
-
         public static PhysicalTicker New()
         {
-            var obj = NewInner();
-            E.Tick?.Register(obj._inner);
+            var obj = new PhysicalTicker();
+            E.Tick?.Register(obj._forwarder, false);
             return obj;
         }
 
         public static PhysicalTicker? New(Action? act)
         {
             if (act == null) return null;
-            var obj = NewInner();
+            var obj = new PhysicalTicker();
             obj.SetTarget(act);
-            E.Tick?.Register(obj._inner);
+            E.Tick?.Register(obj._forwarder, false);
             return obj;
         }
 
         public static PhysicalTicker? New(Action<float, float>? act)
         {
             if (act == null) return null;
-            var obj = NewInner();
+            var obj = new PhysicalTicker();
             obj.SetTarget(act);
-            E.Tick?.Register(obj._inner);
+            E.Tick?.Register(obj._forwarder, false);
             return obj;
         }
 
@@ -144,45 +174,31 @@ namespace XD.GameModule.Module.MTick
         {
             if (obj == null) return;
             obj.SetTarget();
-            E.Tick?.Unregister(obj._inner);
+            E.Tick?.Unregister(obj._forwarder);
         }
 
-        private static PhysicalTicker NewInner()
-        {
-            var obj = new PhysicalTicker();
-            obj.Interval = 0;
-            return obj;
-        }
-
-        public float Interval
-        {
-            get => _inner.PhysicalTickInterval;
-            set => _inner.PhysicalTickInterval = value;
-        }
+        public float Interval { get; set; }
 
         public void SetTarget()
         {
-            _inner.Cb = F.Empty;
-            _inner.Action = null;
-            _inner.ActionWithParam = null;
+            _cb = F.Empty;
+            _action = null;
+            _actionWithParam = null;
         }
 
         public void SetTarget(Action? act)
         {
-            _inner.Action = act;
-            _inner.ActionWithParam = null;
-            if (act == null) _inner.Cb = F.Empty;
-            else _inner.Cb = _inner.OnUpdateWhite;
+            _action = act;
+            _actionWithParam = null;
+            _cb = act == null ? F.Empty : OnUpdateNoParam;
         }
 
         public void SetTarget(Action<float, float>? act)
         {
-            _inner.Action = null;
-            _inner.ActionWithParam = act;
-            if (act == null) _inner.Cb = F.Empty;
-            else _inner.Cb = _inner.OnUpdateWithParam;
+            _action = null;
+            _actionWithParam = act;
+            _cb = act == null ? F.Empty : OnUpdateWithParam;
         }
-
 
         public override void Dispose()
         {
@@ -190,60 +206,67 @@ namespace XD.GameModule.Module.MTick
             base.Dispose();
         }
 
-        ~PhysicalTicker()
+        private PhysicalTicker()
         {
-            SetTarget();
-            E.Tick?.Unregister(_inner);
+            _cb = F.Empty;
+            _forwarder = new WeakForwarder(this);
         }
 
-        private PhysicalTicker() => _inner = new TickerInner();
+        private void OnPhysicalTickInner(float dt, float rdt) => _cb(dt, rdt);
+        private void OnUpdateNoParam(float _, float __) => _action!();
+        private void OnUpdateWithParam(float dt, float rdt) => _actionWithParam!(dt, rdt);
 
-        /// <summary>
-        ///
-        /// </summary>
-        private class TickerInner : IPhysicalTicker
+        private Action<float, float> _cb;
+        private Action? _action;
+        private Action<float, float>? _actionWithParam;
+
+        private readonly WeakForwarder _forwarder;
+
+        private sealed class WeakForwarder : IPhysicalTicker
         {
-            public TickerInner() => Cb = F.Empty;
-            public float PhysicalTickInterval { get; set; }
+            public float PhysicalTickInterval =>
+                _weak.TryGetTarget(out var owner) ? owner.Interval : 0f;
 
-            public Action<float, float> Cb;
-            public void OnPhysicalTick(float dt, float rdt) => Cb(dt, rdt);
+            public WeakForwarder(PhysicalTicker owner) => _weak = new WeakReference<PhysicalTicker>(owner);
 
-            public void OnUpdateWhite(float _, float __) => Action!();
-            public void OnUpdateWithParam(float dt, float rdt) => ActionWithParam!(dt, rdt);
+            public void OnPhysicalTick(float dt, float rdt)
+            {
+                if (_weak.TryGetTarget(out var owner))
+                {
+                    owner.OnPhysicalTickInner(dt, rdt);
+                    return;
+                }
+                E.Tick?.Unregister(this);
+            }
 
-            public Action? Action;
-            public Action<float, float>? ActionWithParam;
+            private readonly WeakReference<PhysicalTicker> _weak;
         }
-        private readonly TickerInner _inner;
     }
 
     public sealed class LateTicker : XDObject
     {
-        public static int PoolSize { get; set; } = 512;
-
         public static LateTicker New()
         {
-            var obj = NewInner();
-            E.Tick?.Register(obj._inner);
+            var obj = new LateTicker();
+            E.Tick?.Register(obj._forwarder, false);
             return obj;
         }
 
         public static LateTicker? New(Action? act)
         {
             if (act == null) return null;
-            var obj = NewInner();
+            var obj = new LateTicker();
             obj.SetTarget(act);
-            E.Tick?.Register(obj._inner);
+            E.Tick?.Register(obj._forwarder, false);
             return obj;
         }
 
         public static LateTicker? New(Action<float, float>? act)
         {
             if (act == null) return null;
-            var obj = NewInner();
+            var obj = new LateTicker();
             obj.SetTarget(act);
-            E.Tick?.Register(obj._inner);
+            E.Tick?.Register(obj._forwarder, false);
             return obj;
         }
 
@@ -251,43 +274,30 @@ namespace XD.GameModule.Module.MTick
         {
             if (obj == null) return;
             obj.SetTarget();
-            E.Tick?.Unregister(obj._inner);
+            E.Tick?.Unregister(obj._forwarder);
         }
 
-        private static LateTicker NewInner()
-        {
-            var obj = new LateTicker();
-            obj.Interval = 0;
-            return obj;
-        }
-
-        public float Interval
-        {
-            get => _inner.LateTickInterval;
-            set => _inner.LateTickInterval = value;
-        }
+        public float Interval { get; set; }
 
         public void SetTarget()
         {
-            _inner.Cb = F.Empty;
-            _inner.Action = null;
-            _inner.ActionWithParam = null;
+            _cb = F.Empty;
+            _action = null;
+            _actionWithParam = null;
         }
 
         public void SetTarget(Action? act)
         {
-            _inner.Action = act;
-            _inner.ActionWithParam = null;
-            if (act == null) _inner.Cb = F.Empty;
-            else _inner.Cb = _inner.OnUpdateWhite;
+            _action = act;
+            _actionWithParam = null;
+            _cb = act == null ? F.Empty : OnUpdateNoParam;
         }
 
         public void SetTarget(Action<float, float>? act)
         {
-            _inner.Action = null;
-            _inner.ActionWithParam = act;
-            if (act == null) _inner.Cb = F.Empty;
-            else _inner.Cb = _inner.OnUpdateWithParam;
+            _action = null;
+            _actionWithParam = act;
+            _cb = act == null ? F.Empty : OnUpdateWithParam;
         }
 
         public override void Dispose()
@@ -296,29 +306,41 @@ namespace XD.GameModule.Module.MTick
             base.Dispose();
         }
 
-        ~LateTicker()
+        private LateTicker()
         {
-            SetTarget();
-            E.Tick?.Unregister(_inner);
+            _cb = F.Empty;
+            _forwarder = new WeakForwarder(this);
         }
 
-        private LateTicker() => _inner = new TickerInner();
+        private void OnLateTickInner(float dt, float rdt) => _cb(dt, rdt);
+        private void OnUpdateNoParam(float _, float __) => _action!();
+        private void OnUpdateWithParam(float dt, float rdt) => _actionWithParam!(dt, rdt);
 
-        private class TickerInner : ILateTicker
+        private Action<float, float> _cb;
+        private Action? _action;
+        private Action<float, float>? _actionWithParam;
+
+        private readonly WeakForwarder _forwarder;
+
+        private sealed class WeakForwarder : ILateTicker
         {
-            public TickerInner() => Cb = F.Empty;
-            public float LateTickInterval { get; set; }
+            public float LateTickInterval =>
+                _weak.TryGetTarget(out var owner) ? owner.Interval : 0f;
 
-            public Action<float, float> Cb;
-            public void OnLateTick(float dt, float rdt) => Cb(dt, rdt);
+            public WeakForwarder(LateTicker owner) => _weak = new WeakReference<LateTicker>(owner);
 
-            public void OnUpdateWhite(float _, float __) => Action!();
-            public void OnUpdateWithParam(float dt, float rdt) => ActionWithParam!(dt, rdt);
+            public void OnLateTick(float dt, float rdt)
+            {
+                if (_weak.TryGetTarget(out var owner))
+                {
+                    owner.OnLateTickInner(dt, rdt);
+                    return;
+                }
+                E.Tick?.Unregister(this);
+            }
 
-            public Action? Action;
-            public Action<float, float>? ActionWithParam;
+            private readonly WeakReference<LateTicker> _weak;
         }
-        private readonly TickerInner _inner;
     }
 
     public sealed class Delay : XDObject, IAwaitable<IAwaiter>, IAwaiter

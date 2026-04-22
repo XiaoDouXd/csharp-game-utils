@@ -61,6 +61,8 @@ namespace XD.GameModule.Module.MAsset
         {
             foreach (var handle in _assetHandles.Values) handle.Release();
             _assetHandles.Clear();
+            // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
+            E.Tick?.Unregister(_delayDriver);
             _delayDriver.Dispose();
             _delayDriver = new TickDelayDriver();
             // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
@@ -72,6 +74,8 @@ namespace XD.GameModule.Module.MAsset
         {
             foreach (var handle in _assetHandles.Values) handle.Release();
             _assetHandles.Clear();
+            // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
+            E.Tick?.Unregister(_delayDriver);
             _delayDriver.Dispose();
             _delayDriver = new TickDelayDriver();
             return IProcedure.RetInfo.Success;
