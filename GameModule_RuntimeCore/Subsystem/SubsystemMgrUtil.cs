@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using XD.Common.Event;
 using XD.Common.Log;
 using XD.Common.ScopeUtil;
 using XD.GameModule.Module;
@@ -20,6 +21,18 @@ namespace XD.GameModule.Subsystem
     {
         OnSubsystemInitializationFinished,
         OnSubsystemAsyncInitializeFinished,
+    }
+
+    /// <summary>
+    /// 子系统生命周期事件的强类型 Key. 广播 / 订阅均通过这些 Key 进行, 参数类型由 Key 锚定.
+    /// </summary>
+    public static class SubsystemLifecycleEventKeys
+    {
+        public static readonly EventKey<Type> OnInitializationFinished =
+            EventKey<Type>.Of(ESubsystemLifecycleEvent.OnSubsystemInitializationFinished);
+
+        public static readonly EventKey<Type> OnAsyncInitializeFinished =
+            EventKey<Type>.Of(ESubsystemLifecycleEvent.OnSubsystemAsyncInitializeFinished);
     }
 
     [AttributeUsage(AttributeTargets.Class)]
@@ -52,9 +65,9 @@ namespace XD.GameModule.Subsystem
                     }
                 }
                 // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
-                E.Event?.I.BroadcastFrameAsync(ESubsystemLifecycleEvent.OnSubsystemInitializationFinished, sysGroup);
+                E.Event?.I.BroadcastFrameAsync(SubsystemLifecycleEventKeys.OnInitializationFinished, sysGroup);
                 await Task.WhenAll(taskList);
-                E.Event?.I.BroadcastFrameAsync(ESubsystemLifecycleEvent.OnSubsystemAsyncInitializeFinished, sysGroup);
+                E.Event?.I.BroadcastFrameAsync(SubsystemLifecycleEventKeys.OnAsyncInitializeFinished, sysGroup);
             }
             catch (Exception e)
             {

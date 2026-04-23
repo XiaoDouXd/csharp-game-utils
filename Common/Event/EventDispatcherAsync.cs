@@ -1,15 +1,25 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics;
 using XD.Common.ScopeUtil;
 
+// ReSharper disable MemberCanBePrivate.Global
+// ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
+// ReSharper disable UnusedType.Global
+// ReSharper disable UnusedMember.Global
+
 namespace XD.Common.Event
 {
-    // ReSharper disable MemberCanBePrivate.Global
-    // ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
-    // ReSharper disable UnusedType.Global
-    public partial class EventDispatcherAsync: EventDispatcher, ITick
+    /// <summary>
+    /// 异步事件分发器. 在同步分发基础上增加:
+    /// - BroadcastFrameDelay: 事件延到下一帧 OnTick 中分发 (完整消费, 失败不影响其他任务).
+    /// - BroadcastFrameAsync: 事件分帧摊薄分发 (单帧耗时或队列长度超阈值时主动让出).
+    /// <para>
+    /// 参数通过泛型 <c>Args&lt;...&gt;</c> struct 打包进 <see cref="DeferredTask{TArgs}"/>,
+    /// 每次广播仅产生 1 次对象分配 (跨帧保存 Args 必须装箱), 不再使用 ParamPack / List 池.
+    /// </para>
+    /// </summary>
+    public partial class EventDispatcherAsync : EventDispatcher, ITick
     {
         public int MaxFrameAsyncHoldSize { get; set; } = 128;
         public long MaxFrameAsyncOvertimeMs { get; set; } = 1000;
@@ -36,8 +46,8 @@ namespace XD.Common.Event
                 {
                     while (_frameDelayQueue.TryDequeue(out var task))
                     {
-                        try { task.Do(this); }
-                        catch (Exception e) { SafeLog(e, "FrameDelay handler"); }
+                        try { task.Run(this); }
+                        catch (Exception e) { SafeAsyncLog(e, "FrameDelay handler"); }
 
                         if (_timeWatcher.ElapsedMilliseconds >= MaxFrameDelayOvertimeMs) break;
                     }
@@ -55,8 +65,8 @@ namespace XD.Common.Event
                     var isContinue = true;
                     while (isContinue && _frameAsyncQueue.TryDequeue(out var task))
                     {
-                        try { task.Do(this); }
-                        catch (Exception e) { SafeLog(e, "FrameAsync handler"); }
+                        try { task.Run(this); }
+                        catch (Exception e) { SafeAsyncLog(e, "FrameAsync handler"); }
 
                         isContinue = _timeWatcher.ElapsedMilliseconds < MaxFrameAsyncOvertimeMs &&
                                      _frameAsyncQueue.Count <= MaxFrameAsyncHoldSize;
@@ -68,10 +78,8 @@ namespace XD.Common.Event
 
         /// <summary>
         /// 清理订阅表的同时, 清空两个 pending 队列. DeInit/Reinit 时调用.
-        /// 注意: 基类 <see cref="EventDispatcher.Clear"/> 不是 virtual, 这里用 new 覆盖;
-        /// 项目内对 I 的静态类型均为 EventDispatcherAsync, 不会走到基类版本.
         /// </summary>
-        public new void Clear()
+        public override void Clear()
         {
             base.Clear();
             // 清空遗留的事件任务, 避免跨 Init 边界分发到已销毁的 listener.
@@ -79,55 +87,52 @@ namespace XD.Common.Event
             while (_frameAsyncQueue.TryDequeue(out _)) { }
         }
 
-        private void BroadcastFrameAsync(in EventIdentify id, List<ParamPack> paramList)
-        {
-            if (!EventMap.TryGetValue(id, out var eventHandlerBases)) return;
+        // ---------------- 内部任务抽象 ----------------
 
-            foreach (var handler in eventHandlerBases)
-                _frameAsyncQueue.Enqueue(new EventTaskInfo(handler, paramList));
-            _frameAsyncQueue.Enqueue(new EventTaskInfo(null, paramList));
+        /// <summary>
+        /// 延迟/异步任务的统一接口. 每次 BroadcastFrameAsync/Delay 会产生 1 个 DeferredTask 对象.
+        /// </summary>
+        private interface IDeferredTask
+        {
+            void Run(EventDispatcherAsync dispatcher);
         }
 
-        private void BroadcastFrameDelay(in EventIdentify id, List<ParamPack> paramList)
+        /// <summary>
+        /// 强类型延迟任务. 持有事件 id + args, 执行时再向 EventMap 查找 handler 列表分发.
+        /// </summary>
+        private sealed class DeferredTask<TArgs> : IDeferredTask where TArgs : struct
         {
-            if (!EventMap.TryGetValue(id, out var eventHandlerBases)) return;
+            public EventIdentify Id;
+            public TArgs Args;
 
-            foreach (var handler in eventHandlerBases)
-                _frameDelayQueue.Enqueue(new EventTaskInfo(handler, paramList));
-            _frameDelayQueue.Enqueue(new EventTaskInfo(null, paramList));
+            public void Run(EventDispatcherAsync dispatcher) => dispatcher.DispatchTyped(Id, in Args);
         }
 
-        private static void SafeLog(Exception e, string tag)
+        private void EnqueueDelay<TArgs>(in EventIdentify id, in TArgs args) where TArgs : struct
+        {
+            if (IsDisposed) return;
+            // 1 次对象分配; args struct 通过字段赋值拷贝进来, 对值类型无额外装箱.
+            _frameDelayQueue.Enqueue(new DeferredTask<TArgs> { Id = id, Args = args });
+        }
+
+        private void EnqueueAsync<TArgs>(in EventIdentify id, in TArgs args) where TArgs : struct
+        {
+            if (IsDisposed) return;
+            _frameAsyncQueue.Enqueue(new DeferredTask<TArgs> { Id = id, Args = args });
+        }
+
+        // ---------------- 日志 ----------------
+
+        private static void SafeAsyncLog(Exception e, string tag)
         {
             try { Log.Log.Error($"[EventDispatcherAsync][{tag}] {e}"); }
             catch { /* swallow: 日志本身也不能再抛 */ }
         }
 
-        private readonly struct EventTaskInfo
-        {
-            private EventHandlerBase? Handler { get; }
-            private List<ParamPack> ParamList { get; }
-
-            public EventTaskInfo(EventHandlerBase? handler, List<ParamPack> paramList)
-            {
-                Handler = handler;
-                ParamList = paramList;
-            }
-
-            public void Do(EventDispatcherAsync dispatcher)
-            {
-                if (Handler == null)
-                {
-                    if (ParamList == null) return;
-                    dispatcher.DelParamList(ParamList);
-                    return;
-                }
-                Handler.Run(ParamList);
-            }
-        }
+        // ---------------- 队列 ----------------
 
         private readonly Stopwatch _timeWatcher = new();
-        private readonly ConcurrentQueue<EventTaskInfo> _frameAsyncQueue = new();
-        private readonly ConcurrentQueue<EventTaskInfo> _frameDelayQueue = new();
+        private readonly ConcurrentQueue<IDeferredTask> _frameAsyncQueue = new();
+        private readonly ConcurrentQueue<IDeferredTask> _frameDelayQueue = new();
     }
 }
