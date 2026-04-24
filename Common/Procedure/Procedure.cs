@@ -138,6 +138,7 @@ namespace XD.Common.Procedure
             }
             OnEnd?.Invoke(this, ret.EndType, ret.Exception);
             Running = false;
+            Process = 1;
         }
 
         public void Abort()
