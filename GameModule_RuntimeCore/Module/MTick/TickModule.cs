@@ -699,6 +699,7 @@ namespace XD.GameModule.Module.MTick
                 // Interval 可能来自接口的动态属性, 每次重读.
                 switch (_kind)
                 {
+                    case CbKind.Empty: return false;
                     case CbKind.Act: return _act != null && _act(dt, rdt);
                     case CbKind.Tick:
                         if (_tick == null) return false;
@@ -715,7 +716,6 @@ namespace XD.GameModule.Module.MTick
                         Interval = _physicalTick.PhysicalTickInterval;
                         _physicalTick.OnPhysicalTick(dt, rdt);
                         return true;
-                    case CbKind.Empty:
                     default: return false;
                 }
             }
