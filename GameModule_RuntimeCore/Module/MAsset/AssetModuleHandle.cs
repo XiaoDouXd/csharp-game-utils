@@ -69,6 +69,20 @@ namespace XD.GameModule.Module.MAsset
             public float Progress => IsCompleted ? IsInvalid ? float.NaN : 1f : _assetHandle?.Progress ?? float.NaN;
             public AssetHolderInner(AssetHandle<T> handle) => _assetHandle = handle;
 
+            // ~XDDisposableObjectBase 只会触发 OnDisposed, 不会触发我们重写的 Dispose;
+            // 为避免业务泄漏 holder 时 handle 引用计数不能正确减少, 这里显式覆盖 finalizer.
+            // finalizer 运行在 GC 线程, 不可直接去抢 handle 的 _sync 锁 (可能触发业务/主线程死锁链),
+            // 统一委托给 AssetModule 在主线程上异步完成 AntiApply.
+            ~AssetHolderInner()
+            {
+                if (IsDisposed) return;
+                var handle = _assetHandle;
+                if (handle == null) return;
+                _assetHandle = null;
+                // 注意: 不要在 finalizer 里直接 lock / 触发 Engine API, 走主线程兜底.
+                handle.Module.EnqueueMainThreadAction(() => handle.AntiApply(this));
+            }
+
             #region asset handle
             public void DoCompleteInner(T? asset, bool isSuccess)
             {
@@ -109,6 +123,7 @@ namespace XD.GameModule.Module.MAsset
             {
                 // check dispose
                 if (IsDisposed) return;
+                GC.SuppressFinalize(this);
                 _assetHandle?.AntiApply(this);
 
                 // clear asset state
@@ -186,7 +201,9 @@ namespace XD.GameModule.Module.MAsset
             }
 
             protected AutoReleaseConf Conf;
-            protected readonly AssetModule Module;
+            // internal (而非 protected): 让同为 AssetModule 嵌套兄弟类型的 AssetHolderInner 的 finalizer
+            // 能拿到所属 AssetModule, 以便向主线程投递 AntiApply 兜底.
+            internal readonly AssetModule Module;
         }
 
         private abstract class AssetHandle<T> : AssetHandle
@@ -360,11 +377,22 @@ namespace XD.GameModule.Module.MAsset
                 }
 
                 // 锁外执行: 移除字典条目 / 调用回调 / 释放底层 handle.
-                // _assetHandles.TryRemove 本身线程安全.
-                Module._assetHandles.TryRemove(Conf.Key, out _);
+                // 注意: 仅在字典中当前 key 对应的 value 确实是 self 时才移除, 避免并发情况下误删
+                // 新插入的同 key handle (见 Load 的 TryAdd 竞态).
+                RemoveSelfFromModule();
                 InvokeOutsideLock(cbs, default, false);
                 try { handleSnapshot.Release(); }
                 catch (Exception e) { Log.Error($"ERR AssetModule: IAssetTask.Release failed: {e}"); }
+            }
+
+            /// <summary>
+            /// 在 _assetHandles 中只移除 self, 避免误删同 key 的其他实例.
+            /// netstandard2.1 下使用 ICollection.Remove 语义即可原子比较 value.
+            /// </summary>
+            private void RemoveSelfFromModule()
+            {
+                var dict = (ICollection<KeyValuePair<string, AssetHandle>>)Module._assetHandles;
+                dict.Remove(new KeyValuePair<string, AssetHandle>(Conf.Key, this));
             }
 
             /// <summary>
@@ -424,7 +452,7 @@ namespace XD.GameModule.Module.MAsset
                 // 锁外调用.
                 if (!isSuccess)
                 {
-                    Module._assetHandles.TryRemove(Conf.Key, out _);
+                    RemoveSelfFromModule();
                     InvokeOutsideLock(cbs, default, false);
                     try { _handle.Release(); }
                     catch (Exception e) { Log.Error($"ERR AssetModule: IAssetTask.Release failed: {e}"); }
