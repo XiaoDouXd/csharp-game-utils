@@ -220,7 +220,7 @@ namespace {tableNamespace}
             sb.Append(sbTableCreator);
             sb.Append($"{indent}{indent}{indent}}};\n{indent}{indent}{indent}method.EndScope(ref data);\n{indent}{indent}{indent}return new CfgUtil.CommonTableCreateResult(ret, version);\n{indent}{indent}}}\n{indent}}}\n");
             sb.Append("}\n");
-            using var f = File.Create(Conf.CodeOutputTargetDir + "/CfgGenTable.cs");
+            using var f = File.Create(Conf.CodeOutputTargetDir + "/CfgGenTable.g.cs");
             using var fWriter = new StreamWriter(f);
             fWriter.Write(sb.ToString());
             return;

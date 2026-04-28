@@ -133,7 +133,7 @@ namespace {tableNamespace}
             sb.Append(sbFunction);
             sb.Append($"{indent}{indent}{indent}method.EndScope(ref data);\n{indent}{indent}{indent}return new CfgUtil.GlobalTableCreateResult(true);\n");
             sb.Append($"{indent}{indent}}}\n{indent}}}\n}}\n");
-            using var f = File.Create(Conf.CodeOutputTargetDir + "/CfgGenGlobalTable.cs");
+            using var f = File.Create(Conf.CodeOutputTargetDir + "/CfgGenGlobalTable.g.cs");
             using var fWriter = new StreamWriter(f);
             fWriter.Write(sb.ToString());
             return;
