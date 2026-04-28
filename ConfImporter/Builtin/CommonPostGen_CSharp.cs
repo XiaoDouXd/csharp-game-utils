@@ -51,7 +51,7 @@ using XD.GameModule.Module.MConfig;
                 }
                 sb.Append("}\n");
 
-                using var f = File.Create(conf.CodeOutputTargetDir + "/CfgGenStruct.cs");
+                using var f = File.Create(conf.CodeOutputTargetDir + "/CfgGenStruct.g.cs");
                 using var fWriter = new StreamWriter(f);
                 fWriter.Write(sb.ToString());
             }
