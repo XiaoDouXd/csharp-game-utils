@@ -51,7 +51,7 @@ namespace {tableNamespace}
             lock (_cfg) cfgList = _cfg.Values.Where(inst => inst is { IsBreak: false, Fields: { Count: > 0 } }).ToArray();
             if (cfgList is not { Length: > 0 })
             {
-                using var fEmpty = File.Create(Conf.CodeOutputTargetDir + "/CfgGenTable.cs");
+                using var fEmpty = File.Create(Conf.CodeOutputTargetDir + "/CfgGenTable.g.cs");
                 using var fWriterEmpty = new StreamWriter(fEmpty);
                 fWriterEmpty.Write("");
                 return;
