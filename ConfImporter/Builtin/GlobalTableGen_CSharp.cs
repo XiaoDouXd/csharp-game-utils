@@ -18,7 +18,7 @@ namespace ConfImporter.Builtin
             {
                 if (_tables is not { Count: > 0 })
                 {
-                    using var fEmpty = File.Create(Conf.CodeOutputTargetDir + "/CfgGenGlobalTable.cs");
+                    using var fEmpty = File.Create(Conf.CodeOutputTargetDir + "/CfgGenGlobalTable.g.cs");
                     using var fWriterEmpty = new StreamWriter(fEmpty);
                     fWriterEmpty.Write("");
                     return;
