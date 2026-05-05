@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿#nullable enable
+
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -18,9 +20,7 @@ namespace ConfImporter.Builtin
             {
                 if (_tables is not { Count: > 0 })
                 {
-                    using var fEmpty = File.Create(Conf.CodeOutputTargetDir + "/CfgGenGlobalTable.g.cs");
-                    using var fWriterEmpty = new StreamWriter(fEmpty);
-                    fWriterEmpty.Write("");
+                    TextFile.WriteAllText(Conf.CodeOutputTargetDir + "/CfgGenGlobalTable.g.cs", string.Empty);
                     return;
                 }
             }
@@ -133,9 +133,7 @@ namespace {tableNamespace}
             sb.Append(sbFunction);
             sb.Append($"{indent}{indent}{indent}method.EndScope(ref data);\n{indent}{indent}{indent}return new CfgUtil.GlobalTableCreateResult(true);\n");
             sb.Append($"{indent}{indent}}}\n{indent}}}\n}}\n");
-            using var f = File.Create(Conf.CodeOutputTargetDir + "/CfgGenGlobalTable.g.cs");
-            using var fWriter = new StreamWriter(f);
-            fWriter.Write(sb.ToString());
+            TextFile.WriteAllText(Conf.CodeOutputTargetDir + "/CfgGenGlobalTable.g.cs", sb.ToString());
             return;
 
             static string GetFieldTypeName(in TypeInfo info, string typeStr)
@@ -174,21 +172,52 @@ namespace {tableNamespace}
             {
                 if (_tables.Count <= 0)
                 {
-                    using var fEmpty = File.Create(Conf.ByteOutputTargetDir + "/GlobalTable.bytes");
-                    using var fWriterEmpty = new StreamWriter(fEmpty);
-                    fWriterEmpty.Write("");
+                    File.WriteAllText(Conf.ByteOutputTargetDir + "/GlobalTable.bytes", string.Empty,
+                        new UTF8Encoding(false));
+                    var emptyJsonDir = Conf.ResolveJsonOutputDir();
+                    Directory.CreateDirectory(emptyJsonDir);
+                    File.WriteAllText(emptyJsonDir + "/GlobalTable.json", "{}\n",
+                        new UTF8Encoding(false));
                     return;
                 }
 
+                // ── 二进制 (列表化, 与运行时反序列化对齐, 不变) ──
                 var objList = new List<object>{ Conf.Version };
                 foreach (var table in _tables.Values)
-                    objList.AddRange(table.Values.Select(field => field.Data));
+                    objList.AddRange(table.Values.Select(field => field.Data!));
                 var bytes = MessagePackSerializer.Serialize(objList);
-                using var f = File.Create(Conf.ByteOutputTargetDir + "/GlobalTable.bytes");
-                f.Write(bytes);
-                using var fJson = File.Create(Conf.ByteOutputTargetDir + "/GlobalTable.json");
-                using var fJsonWriter = new StreamWriter(fJson);
-                fJsonWriter.Write(MessagePackSerializer.ConvertToJson(bytes));
+                using (var f = File.Create(Conf.ByteOutputTargetDir + "/GlobalTable.bytes"))
+                    f.Write(bytes, 0, bytes.Length);
+
+                // ── JSON (友好结构) ──
+                var tablesJson = new List<object?>();
+                foreach (var (tableName, fields) in _tables)
+                {
+                    var fieldsJson = new List<object?>();
+                    foreach (var (fname, fdata) in fields)
+                    {
+                        fieldsJson.Add(new Dictionary<string, object?>
+                        {
+                            ["name"]      = fname,
+                            ["type"]      = fdata.Type.ToFriendlyString(),
+                            ["attribute"] = fdata.Type.Attribute,
+                            ["value"]     = fdata.Data,
+                        });
+                    }
+                    tablesJson.Add(new Dictionary<string, object?>
+                    {
+                        ["name"]   = tableName,
+                        ["fields"] = fieldsJson,
+                    });
+                }
+                var root = new Dictionary<string, object?>
+                {
+                    ["version"] = Conf.Version,
+                    ["tables"]  = tablesJson,
+                };
+                var jsonDir = Conf.ResolveJsonOutputDir();
+                Directory.CreateDirectory(jsonDir);
+                PrettyJson.WriteFile(jsonDir + "/GlobalTable.json", root);
             }
         }
     }

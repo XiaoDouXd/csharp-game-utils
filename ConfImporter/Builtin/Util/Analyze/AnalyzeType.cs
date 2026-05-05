@@ -150,31 +150,40 @@ namespace ConfImporter.Builtin.Util
             return slice;
         }
 
+        /// <summary>
+        /// 匹配类型注解块 <c>&lt;...&gt;</c>. 内部允许任意 unicode 字符:
+        /// <list type="bullet">
+        ///   <item> 裸字符串 (不含 <c>,</c> <c>=</c> <c>&gt;</c> <c>"</c>) 表达 key/value </item>
+        ///   <item> 双引号包裹的字符串 <c>"..."</c> 可以承载任意字符 (含 <c>,</c> <c>=</c> <c>&gt;</c>),
+        ///     使用反斜杠 <c>\</c> 转义双引号本身和反斜杠. 中文全角双引号 <c>"</c><c>"</c> 同样支持.</item>
+        /// </list>
+        /// 实际的 key/value 拆分由 <see cref="ConfImporter.Builtin.Type.TypeInfo.ParseAttribute"/> 完成.
+        /// </summary>
         private static ReadOnlySpan<char> MatchAttributeBlock(ref ReadOnlySpan<char> str)
         {
             if (str.IsEmpty || str[0] != '<') return ReadOnlySpan<char>.Empty;
 
-            var i = 0;
-            var isEnter = false;
             var tStr = str[1..];
+            var i = 0;
+            var inQuote = false;       // 当前是否在 "..." 里
+            var isEscaping = false;    // 上一字符是 \
+            var closed = false;
             for (; i < tStr.Length; i++)
             {
-                isEnter = true;
                 var c = tStr[i];
-                if (c == '>')
+                if (isEscaping) { isEscaping = false; continue; }
+                if (c == '\\') { isEscaping = true; continue; }
+                if (inQuote)
                 {
-                    isEnter = false;
-                    break;
+                    if (IsStringSurroundedChar(c)) inQuote = false;
+                    continue;
                 }
-
-                if (IsFlag(c)) continue;
-                if (IsDigit(c)) continue;
-                if (char.IsWhiteSpace(c)) continue;
-                if (IsLetterOrUnderLine(c)) continue;
-                if (c == '|') continue;
-                break;
+                if (IsStringSurroundedChar(c)) { inQuote = true; continue; }
+                if (c == '>') { closed = true; break; }
+                // 行末/回车视为格式错误, 防止吞过整列
+                if (c is '\r' or '\n') break;
             }
-            if (isEnter) return ReadOnlySpan<char>.Empty;
+            if (!closed) return ReadOnlySpan<char>.Empty;
 
             str = tStr;
             var slice = str[..i];
@@ -349,6 +358,8 @@ namespace ConfImporter.Builtin.Util
 
             ["string"] = new TypeDefaultSetting(TypeInfo.EBaseType.String, TypeInfo.ETypeFlag.Nullable),
             ["str"] = new TypeDefaultSetting(TypeInfo.EBaseType.String, TypeInfo.ETypeFlag.Nullable),
+
+            ["text"] = new TypeDefaultSetting(TypeInfo.EBaseType.Text, TypeInfo.ETypeFlag.Nullable),
 
             ["enum"] = new TypeDefaultSetting(TypeInfo.EBaseType.Enum, TypeInfo.ETypeFlag.Nullable)
         };

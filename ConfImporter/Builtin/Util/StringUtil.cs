@@ -47,6 +47,57 @@ namespace ConfImporter.Builtin.Util
 
         public static bool IsLetterOrUnderLine(char c) => c is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or '_';
 
+        /// <summary>
+        /// 宽松的 unicode 标识符判定: 允许 unicode 字母、数字、下划线、横杠.
+        /// 字符不能以数字开头. 用于本地化表名 / text 字面量的 TABLE/KEY / 普通表配置表名.
+        /// </summary>
+        public static bool IsUnicodeIdent(in ReadOnlySpan<char> str)
+        {
+            if (str.IsEmpty) return false;
+            for (var i = 0; i < str.Length; i++)
+            {
+                var c = str[i];
+                if (i == 0 && IsDigit(c)) return false;
+                if (IsUnicodeIdentChar(c)) continue;
+                return false;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// 与 <see cref="MatchProgramValidName"/> 对应的 unicode 友好版本: 接受 unicode 字母/数字/下划线/横杠.
+        /// 同样不允许首字符为数字.
+        /// </summary>
+        public static ReadOnlySpan<char> MatchUnicodeIdent(ref ReadOnlySpan<char> str)
+        {
+            var slice = ReadOnlySpan<char>.Empty;
+            if (str.IsEmpty) return slice;
+
+            for (var i = 0; i < str.Length; i++)
+            {
+                var c = str[i];
+                if (i == 0 && IsDigit(c)) return slice;
+                if (IsUnicodeIdentChar(c)) continue;
+
+                slice = str[..i];
+                str = str[i..];
+                return slice;
+            }
+
+            slice = str;
+            str = ReadOnlySpan<char>.Empty;
+            return slice;
+        }
+
+        /// <summary>
+        /// 判断单个字符是否为 unicode 标识符的合法字符 (字母/数字/下划线/横杠).
+        /// </summary>
+        public static bool IsUnicodeIdentChar(char c)
+        {
+            if (c == '_' || c == '-') return true;
+            return char.IsLetter(c) || char.IsDigit(c);
+        }
+
         public static int FindFirst(in ReadOnlySpan<char> str, char c)
         {
             for (var i = 0; i < str.Length; i++)

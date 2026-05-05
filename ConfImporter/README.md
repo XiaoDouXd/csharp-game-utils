@@ -65,7 +65,27 @@ String, // string
 
 ["string"] = new TypeDefaultSetting(TypeInfo.EBaseType.String, TypeInfo.ETypeFlag.Nullable),
 ["str"] = new TypeDefaultSetting(TypeInfo.EBaseType.String, TypeInfo.ETypeFlag.Nullable),
+
+["text"] = new TypeDefaultSetting(TypeInfo.EBaseType.Text, TypeInfo.ETypeFlag.Nullable),
 ```
+
+#### text 类型 (本地化 key)
+
+`text` 是一种特殊的字符串基础类型, 字面值形如 `[TABLE,KEY]`,
+其中 `TABLE` 是本地化表名 (与本地化 xlsx 中 `<...>` 捕获的表名一致),
+`KEY` 是 i18n 表中的 key 字段值. **TABLE / KEY 都可以使用 unicode 字符**
+(字母 / 数字 / 下划线 / 横杠, 不可以数字开头), 中间允许空白.
+
+例子:
+- `[Common, PROJECT_NAME]`
+- `[漫画对话, KEY_001]`
+- `[Common, 项目-名称]`
+
+text 字段在导出阶段按字符串原样落盘, 在校验阶段会:
+
+1. 检查格式是否合法 (`[TABLE,KEY]`).
+2. 检查 `TABLE` 是否存在于本地化表中.
+3. 检查 `KEY` 是否在 `TABLE` 中已登记 (任一语言登记过即视为存在).
 
 
 
@@ -112,6 +132,60 @@ flag: 类型标签
 #### 类型标签
 
 当前内建的类型标签有两个：! 和 ?，分别标识类型的可空性（! 为不可空, ? 为可空），可以改变导表时面对空字符串所取的默认值。
+
+#### 类型注解 `<...>`
+
+类型字符串可以在 fields 块和 flag 之间附加一段尖括号注解, 用半角逗号分隔多个项,
+每一项要么是单纯的 tag (如 `<asset>`), 要么是 `key=value` (如 `<index=World>`).
+注解整体在导表数据流中**不会**作为字段的值落盘, 而是参与校验, 并通过生成代码
+`CfgGenMeta.g.cs` 暴露给运行时使用.
+
+```
+<type>: 类型 (基础类型或复合类型)
+<attribute>: 注解, 形如 <key1=value1, key2, key3=value3>
+
+完整文法 (注解出现在 fields 之后, 类型 flag 之前):
+    <type>{<attribute>}{flag}{[ {keyType} ]{flag}}
+
+例子:
+    text                          // 本地化 key
+    text<i18n>                    // 同上, i18n 仅作语义提示, 当前不被识别 -> 会输出 warning
+    int<index=World>              // 字段值为 World 表的主键
+    int<index=World>[]            // 数组, 每一项都是 World 表的主键
+    string<asset>                 // 字段值是引擎能解析的资产路径 (如 res://...)
+    string<desc="包含, 和=的备注"> // 引号里允许任意 unicode 字符
+```
+
+**注解里的字符**:
+
+- 裸 key/value 允许 unicode 字母、数字、下划线、横杠、点 等任意非分隔符 (`,` `=` `>`
+  `"` 除外).
+- `key=value` 中的 value 可以用半 / 全角双引号 `"..."` 包裹, 内部可放任意字符
+  (含 `,` `=` `>`); 用反斜杠 `\` 转义引号自身和反斜杠.
+- 同名 key 后者覆盖前者.
+
+**当前内建支持的注解 key**:
+
+| key      | value          | 含义                                           |
+| -------- | -------------- | ---------------------------------------------- |
+| `index`  | 目标普通表名   | 字段值必须是目标表的主键 (Id) 之一             |
+| `asset`  | (无)           | 字段值是工程内可解析的资产路径, 由外部裁定存在 |
+
+未识别的 key 会在校验阶段输出 warning, 不阻止导表.
+
+**运行时访问**: 导表后会生成 `CfgGenMeta.bytes` (二进制) 与 `CfgGenMeta.g.cs` (反序列化器代码).
+框架在 `ConfigModule.InitProcedure` 中按需加载, 数据保存到 `Game.Config.Main.CfgMeta`,
+**与配置表三大件 (Common/Global/I18n) 一样支持热刷**. 业务代码可通过:
+
+```csharp
+using Game.Config.Main;
+
+if (CfgMeta.TryGetCommonAttr("World", "path", "asset", out var v))
+    // 字段被标注为 asset
+```
+
+或直接拿到注解 map: `CfgMeta.GetCommonFieldAttrs("World", "path")` /
+`CfgMeta.GetGlobalFieldAttrs("Common", "ProjectName")`.
 
 ### 普通表
 
@@ -238,3 +312,79 @@ flag: 类型标签
 ## 自定义表
 
 配置表的导表逻辑可以通过继承并实现 TableTypeDec 来扩展。
+
+## 产物文件约定
+
+导表工具一次成功运行后会落盘以下文件:
+
+| 文件 | 编码 | 输出目录 (`ConfImporter` 字段) | 说明 |
+| --- | --- | --- | --- |
+| `CommonTable.bytes` / `GlobalTable.bytes` / `I18nTable.bytes` / `CfgGenMeta.bytes` | 二进制 (MessagePack) | `ByteOutputTargetDir` | 运行时反序列化使用, 支持热刷 |
+| `CommonTable.json` / `GlobalTable.json` / `I18nTable.json` / `CfgGenMeta.json` | UTF-8 无 BOM, 友好缩进 | `JsonOutputTargetDir` (空则回落 `ByteOutputTargetDir`) | 仅供人工 / 工具阅读, 不参与运行时加载 |
+| `CfgGenStruct.g.cs` / `CfgGenTable.g.cs` / `CfgGenGlobalTable.g.cs` / `CfgGenMeta.g.cs` | UTF-8 无 BOM | `CodeOutputTargetDir` | 运行时强类型读表代码 / meta 反序列化器 |
+| `validation_report.json` | UTF-8 无 BOM | 校验执行方决定 (GUI 默认 `JsonOutputTargetDir`) | 校验产生的 issue 列表与待外部裁定的 asset 候选 |
+
+**所有文本产物一律使用 UTF-8 无 BOM、LF 行尾**, 与项目 `.gitattributes` 默认约定一致.
+
+> JSON 产物**默认建议**单独放到一个 git-ignore 的目录 (例如本仓库的
+> `docs/designer/table/__gitignore__json/`), 避免和发布期 `.bytes` 产物混在一起,
+> 也避免人工调试用的明文随提交噪声进仓库. 运行时不读 `.json`, 因此只要
+> `.bytes` 在 `ByteOutputTargetDir` 落得对就行, JSON 目录可任选.
+
+CommonTable.json 例:
+
+```jsonc
+{
+  "version": 1,
+  "tables": [
+    {
+      "name": "World",
+      "fields": [
+        { "name": "Id", "type": "int32", "attribute": "" },
+        { "name": "path", "type": "string?", "attribute": "asset" }
+      ],
+      "rows": [
+        { "id": 0, "subId": "",
+          "data": { "Id": 0, "path": "res://res/scene/entrance.tscn" } }
+      ]
+    }
+  ]
+}
+```
+
+## 校验 (Validation)
+
+`ConfImporter.Validate.Validator` 提供了导表后的静态校验入口, 可以直接在外部进程
+(例如 ConfImporterGUI) 中调用. 校验需要在 `CollectFiles` + `AnaTable` 之后执行,
+不强制依赖 `GenByte` / `GenCode`.
+
+```csharp
+var report = ConfImporter.Validate.Validator.Run(importer);
+report.WriteJsonTo("./validation_report.json");
+```
+
+校验项目:
+
+- **text 类型字段值**: 检查 `[TABLE,KEY]` 字面格式, 并校验 (TABLE, KEY) 已经登记
+  在本地化表的某个语言中.
+- **`<index=TableName>` 注解**: 字段值需是目标普通表的主键之一 (数字 / 字符串 id 自动归一).
+- **`<asset>` 注解**: 字段值非空时收集到 `report.Assets`, 由具备引擎运行时上下文的
+  外部消费者 (例如 Godot addon, 或 ConfImporterGUI 自身根据 `--project-root` 做物理
+  存在性校验) 裁定.
+- **未识别的注解 key**: 输出 Warning, 不阻止导表.
+
+校验报告 (`validation_report.json`) 的 schema:
+
+```jsonc
+{
+  "errorCount":   0,
+  "warningCount": 0,
+  "issues": [
+    { "severity": "Error", "source": "World[1].path", "category": "asset",
+      "message": "..." }
+  ],
+  "assets": [
+    { "source": "World[1].path", "path": "res://res/scene/entrance.tscn" }
+  ]
+}
+```

@@ -20,7 +20,7 @@ using MessagePack;
 // ReSharper disable once CheckNamespace
 namespace ConfImporter.Builtin
 {
-    public class I18nTable : TableTypeDec
+    public partial class I18nTable : TableTypeDec
     {
         public override bool CheckSheetName(string sheetName, string fileName, in SheetReader reader)
         {
@@ -36,7 +36,8 @@ namespace ConfImporter.Builtin
             if (idx <= 0) return false;
             sheetNameSpan = sheetNameSpan[..idx];
 
-            var programName = StringUtil.MatchProgramValidName(ref sheetNameSpan);
+            // 本地化表名允许 unicode 标识符
+            var programName = StringUtil.MatchUnicodeIdent(ref sheetNameSpan);
             return !programName.IsEmpty && fileName.ToLower().StartsWith("i18n-");
         }
 
@@ -54,7 +55,7 @@ namespace ConfImporter.Builtin
             if (idx <= 0) return null;
             sheetNameSpan = sheetNameSpan[..idx];
 
-            var programName = StringUtil.MatchProgramValidName(ref sheetNameSpan);
+            var programName = StringUtil.MatchUnicodeIdent(ref sheetNameSpan);
             var sName = programName.ToString();
             if (sName.StartsWith("__")) return null;
             return string.IsNullOrWhiteSpace(sName) ? null : new TableInst(this, sName);
@@ -66,9 +67,12 @@ namespace ConfImporter.Builtin
             {
                 if (_tables.Count <= 0)
                 {
-                    using var fEmpty = File.Create(Conf.ByteOutputTargetDir + "/I18nTable.bytes");
-                    using var fWriterEmpty = new StreamWriter(fEmpty);
-                    fWriterEmpty.Write("");
+                    File.WriteAllText(Conf.ByteOutputTargetDir + "/I18nTable.bytes", string.Empty,
+                        new System.Text.UTF8Encoding(false));
+                    var emptyJsonDir = Conf.ResolveJsonOutputDir();
+                    Directory.CreateDirectory(emptyJsonDir);
+                    File.WriteAllText(emptyJsonDir + "/I18nTable.json", "{}\n",
+                        new System.Text.UTF8Encoding(false));
                     return;
                 }
 
@@ -91,11 +95,38 @@ namespace ConfImporter.Builtin
                     objList.Add(tableList);
                 }
                 var bytes = MessagePackSerializer.Serialize(objList);
-                using var f = File.Create(Conf.ByteOutputTargetDir + "/I18nTable.bytes");
-                f.Write(bytes);
-                using var fJson = File.Create(Conf.ByteOutputTargetDir + "/I18nTable.json");
-                using var fJsonWriter = new StreamWriter(fJson);
-                fJsonWriter.Write(MessagePackSerializer.ConvertToJson(bytes));
+                using (var f = File.Create(Conf.ByteOutputTargetDir + "/I18nTable.bytes"))
+                    f.Write(bytes, 0, bytes.Length);
+
+                // ── JSON (友好结构) ──
+                var langsJson = new List<object?>();
+                foreach (var (lang, tables) in _tables)
+                {
+                    var tablesJson = new List<object?>();
+                    foreach (var table in tables.Values)
+                    {
+                        var entries = new List<KeyValuePair<string, object?>>();
+                        foreach (var (k, v) in table.Data)
+                            entries.Add(new KeyValuePair<string, object?>(k, v));
+                        tablesJson.Add(new Dictionary<string, object?>
+                        {
+                            ["name"]    = table.Name,
+                            ["entries"] = entries,
+                        });
+                    }
+                    langsJson.Add(new Dictionary<string, object?>
+                    {
+                        ["lang"]   = lang.ToString(),
+                        ["tables"] = tablesJson,
+                    });
+                }
+                var root = new Dictionary<string, object?>
+                {
+                    ["languages"] = langsJson,
+                };
+                var jsonDir = Conf.ResolveJsonOutputDir();
+                Directory.CreateDirectory(jsonDir);
+                PrettyJson.WriteFile(jsonDir + "/I18nTable.json", root);
             }
         }
 
@@ -146,6 +177,9 @@ namespace ConfImporter.Builtin
                     }
 
                     if (!Enum.TryParse<ELocaleCode>(head, out var language))
+                        continue;
+                    // 内部哨兵值, 不能作为合法的语言列
+                    if (language == ELocaleCode.__none || language == ELocaleCode.__max)
                         continue;
                     _languages[i] = language;
                 }

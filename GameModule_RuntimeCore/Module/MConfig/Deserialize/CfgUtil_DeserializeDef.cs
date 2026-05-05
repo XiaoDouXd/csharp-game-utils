@@ -20,6 +20,11 @@ namespace XD.GameModule.Module.MConfig
         /// </summary>
         public delegate GlobalTableCreateResult GlobalTableCreateDelegate(ref SerializedData data, IDeserializeMethod method);
 
+        /// <summary>
+        /// 配置表注解元数据初始化回调
+        /// </summary>
+        public delegate CfgMetaCreateResult CfgMetaCreateDelegate(ref SerializedData data, IDeserializeMethod method);
+
         public readonly partial struct CommonTableCreateResult
         {
             public readonly long Version;
@@ -35,6 +40,21 @@ namespace XD.GameModule.Module.MConfig
         {
             public readonly bool Success;
             public GlobalTableCreateResult(bool success) => Success = success;
+        }
+
+        /// <summary>
+        /// 注解元数据反序列化结果. 实际数据由 <c>____cfgGenFunction.CreateCfgMeta</c> 写入
+        /// 生成代码侧的静态 <c>CfgMeta</c> 中, 此结构仅用于驱动 formatter 调用链.
+        /// </summary>
+        public readonly partial struct CfgMetaCreateResult
+        {
+            public readonly bool Success;
+            public readonly long Version;
+            public CfgMetaCreateResult(bool success, long version)
+            {
+                Success = success;
+                Version = version;
+            }
         }
 
         #endregion

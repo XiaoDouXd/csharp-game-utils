@@ -10,6 +10,18 @@ namespace ConfImporter.Builtin.Util
 {
     internal static partial class Analyzer
     {
+        [Flags]
+        public enum EStringAvoidChar : byte
+        {
+            None = 0,
+
+            ArrSplit = 1 << 0,
+            DictKeySplit = 1 << 1,
+            CustomFieldSplit = 1 << 2,
+
+            All = ArrSplit | DictKeySplit | CustomFieldSplit
+        }
+
         public const char EscapingChar = '\\';
 
         #region Eat functions
@@ -40,7 +52,7 @@ namespace ConfImporter.Builtin.Util
                 {
                     var keyType = info.KeyType;
                     var newStr = str;
-                    var s = EatBaseTypeValue(ref newStr, keyType);
+                    var s = EatBaseTypeValue(ref newStr, keyType, EStringAvoidChar.All);
 
                     StringUtil.TrimHead(ref newStr);
                     if (newStr.Length > 0 && IsDictKeySplitChar(newStr[0]))
@@ -81,15 +93,24 @@ namespace ConfImporter.Builtin.Util
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static ValueGroup EatValueGroup(ref ReadOnlySpan<char> str, in TypeInfo info)
         {
+            var stringAvoidChar = info.Container switch
+            {
+                TypeInfo.EContainer.None => EStringAvoidChar.None,
+                TypeInfo.EContainer.Array => EStringAvoidChar.ArrSplit,
+                TypeInfo.EContainer.Dictionary => EStringAvoidChar.DictKeySplit | EStringAvoidChar.ArrSplit,
+                _ => EStringAvoidChar.None
+            };
+
             if (info.ValType != TypeInfo.EBaseType.Custom)
             {
                 var type = info.ValType;
-                var s = EatBaseTypeValue(ref str, type);
+                var s = EatBaseTypeValue(ref str, type, stringAvoidChar);
                 var a = ToAnyBase(type, info.Flag, s);
                 return new ValueGroup() { [0] = a };
             }
             if (info.FieldCount <= 0 || info.ValType == TypeInfo.EBaseType.Null) return new ValueGroup();
 
+            stringAvoidChar |= EStringAvoidChar.CustomFieldSplit;
             var valGroup = new ValueGroup() { IsNull = (info.ValFlag & TypeInfo.ETypeFlag.Nullable) == 0 };
             var i = 0;
             var isInterrupt = false;
@@ -115,7 +136,7 @@ namespace ConfImporter.Builtin.Util
                     continue;
                 }
 
-                var ss = EatBaseTypeValue(ref str, type);
+                var ss = EatBaseTypeValue(ref str, type, stringAvoidChar);
                 StringUtil.TrimHead(ref str);
                 valGroup[i] = ToAnyBase(type, flag, ss);
                 valGroup.IsNull = false;
@@ -128,7 +149,7 @@ namespace ConfImporter.Builtin.Util
             return valGroup;
         }
 
-        public static ReadOnlySpan<char> EatBaseTypeValue(ref ReadOnlySpan<char> str, TypeInfo.EBaseType type)
+        public static ReadOnlySpan<char> EatBaseTypeValue(ref ReadOnlySpan<char> str, TypeInfo.EBaseType type, EStringAvoidChar avoidChar)
         {
             switch (type)
             {
@@ -144,8 +165,9 @@ namespace ConfImporter.Builtin.Util
                 case TypeInfo.EBaseType.Float32:
                 case TypeInfo.EBaseType.Float64: return EatNumber(ref str);
                 case TypeInfo.EBaseType.Link: return EatLink(ref str);
-                case TypeInfo.EBaseType.String: return EatString(ref str);
+                case TypeInfo.EBaseType.String: return EatString(ref str, avoidChar);
                 case TypeInfo.EBaseType.Enum: return EatSymbol(ref str);
+                case TypeInfo.EBaseType.Text: return EatText(ref str, avoidChar);
                 case TypeInfo.EBaseType.Null:
                 case TypeInfo.EBaseType.Custom:
                 default: return ReadOnlySpan<char>.Empty;
@@ -168,7 +190,7 @@ namespace ConfImporter.Builtin.Util
             return slice;
         }
 
-        public static ReadOnlySpan<char> EatString(ref ReadOnlySpan<char> str)
+        public static ReadOnlySpan<char> EatString(ref ReadOnlySpan<char> str, EStringAvoidChar avoidChar)
         {
             if (str.IsEmpty) return str;
             var isEscaping = false;
@@ -190,7 +212,9 @@ namespace ConfImporter.Builtin.Util
                     {
                         case true when IsStringSurroundedChar(c):
                             return StringUtil.Divide(ref str, i + 1)[1..^1];
-                        case false when IsArrSplitChar(c) || IsDictKeySplitChar(c) || IsCustomFieldSplitChar(c):
+                        case false when (IsArrSplitChar(c) && avoidChar.HasFlag(EStringAvoidChar.ArrSplit)) ||
+                                        (IsDictKeySplitChar(c) && avoidChar.HasFlag(EStringAvoidChar.DictKeySplit)) ||
+                                        (IsCustomFieldSplitChar(c) && avoidChar.HasFlag(EStringAvoidChar.CustomFieldSplit)):
                             return StringUtil.Divide(ref str, i);
                     }
                 }
@@ -240,6 +264,10 @@ namespace ConfImporter.Builtin.Util
             if (str.IsEmpty) return str;
 
             var i = 0;
+            // 可选符号位
+            if (i < str.Length && (str[i] == '+' || str[i] == '-')) i++;
+
+            var hasDigit = false;
             var isDot = false;
             for (; i < str.Length; i++)
             {
@@ -247,13 +275,27 @@ namespace ConfImporter.Builtin.Util
                 switch (c)
                 {
                     case >= '0' and <= '9':
-                        continue;
+                        hasDigit = true; continue;
                     case '.' when !isDot:
-                        isDot = true;
-                        continue;
+                        isDot = true; continue;
                 }
+
                 break;
             }
+
+            // 科学计数法 e/E[+/-]digits
+            // ReSharper disable once ConvertIfStatementToSwitchStatement
+            if (hasDigit && i < str.Length && (str[i] == 'e' || str[i] == 'E'))
+            {
+                var j = i + 1;
+                if (j < str.Length && (str[j] == '+' || str[j] == '-')) j++;
+                var expStart = j;
+                while (j < str.Length && str[j] >= '0' && str[j] <= '9') j++;
+                if (j > expStart) i = j; // 至少 1 位指数
+            }
+
+            // 没有任何数字, 视作匹配失败
+            if (!hasDigit) return ReadOnlySpan<char>.Empty;
             return StringUtil.Divide(ref str, i);
         }
 
@@ -278,6 +320,59 @@ namespace ConfImporter.Builtin.Util
             return table.IsEmpty
                 ? StringUtil.Divide(ref str, item.Length)
                 : StringUtil.Divide(ref str, str.Length - newContent.Length);
+        }
+
+        /// <summary>
+        /// 吞下本地化 key, 格式为: <c>[TABLE,KEY]</c>, 其中 TABLE / KEY 都是 unicode 标识符
+        /// (字母 / 数字 / 下划线 / 横杠, 不允许以数字开头), 之间允许空白.
+        /// 成功时返回包含首尾方括号的原始切片, 便于后续按原串做落盘与校验.
+        /// 失败 (缺括号 / 缺逗号 / 子项非法) 时返回空切片, 让调用方报错.
+        /// </summary>
+        public static ReadOnlySpan<char> EatText(ref ReadOnlySpan<char> str, EStringAvoidChar avoidChar)
+        {
+            if (str.IsEmpty) return str;
+
+            // 允许空白值 (由 Nullable 规则决定默认值)
+            var probe = str;
+            StringUtil.TrimHead(ref probe);
+            if (probe.IsEmpty) { str = probe; return ReadOnlySpan<char>.Empty; }
+
+            if (probe[0] != '[') return ReadOnlySpan<char>.Empty;
+
+            // 从 '[' 开始扫到第一个 ']' (不支持嵌套)
+            var originLen = str.Length;
+            var leadingTrim = originLen - probe.Length;
+            var body = probe[1..];
+            var closeIdx = -1;
+            for (var i = 0; i < body.Length; i++)
+            {
+                var c = body[i];
+                if (c == ']') { closeIdx = i; break; }
+                // text 内禁止跨过列/项分隔符, 防止书写错误无限吞
+                if ((IsArrSplitChar(c) && avoidChar.HasFlag(EStringAvoidChar.ArrSplit)) ||
+                    (IsDictKeySplitChar(c) && avoidChar.HasFlag(EStringAvoidChar.DictKeySplit)) ||
+                    (IsCustomFieldSplitChar(c) && avoidChar.HasFlag(EStringAvoidChar.CustomFieldSplit)))
+                    return ReadOnlySpan<char>.Empty;
+            }
+            if (closeIdx < 0) return ReadOnlySpan<char>.Empty;
+
+            // 验证内部格式: <ident> , <ident>
+            var inner = body[..closeIdx];
+            var innerScan = inner;
+            StringUtil.TrimHead(ref innerScan);
+            var tableName = StringUtil.MatchUnicodeIdent(ref innerScan);
+            if (tableName.IsEmpty) return ReadOnlySpan<char>.Empty;
+            StringUtil.TrimHead(ref innerScan);
+            if (innerScan.IsEmpty || innerScan[0] is not (',' or '，')) return ReadOnlySpan<char>.Empty;
+            innerScan = innerScan[1..];
+            StringUtil.TrimHead(ref innerScan);
+            var keyName = StringUtil.MatchUnicodeIdent(ref innerScan);
+            if (keyName.IsEmpty) return ReadOnlySpan<char>.Empty;
+            StringUtil.TrimHead(ref innerScan);
+            if (!innerScan.IsEmpty) return ReadOnlySpan<char>.Empty;
+
+            var totalEaten = leadingTrim + 1 /*'['*/ + closeIdx + 1 /*']'*/;
+            return StringUtil.Divide(ref str, totalEaten).Slice(leadingTrim); // 去掉前导空白
         }
 
         public static bool IsCustomFieldSplitChar(char c) => c is '，' or ',';
@@ -362,6 +457,10 @@ namespace ConfImporter.Builtin.Util
                     if ((flag & TypeInfo.ETypeFlag.Nullable) != 0 && fieldStr.IsWhiteSpace())
                         return new AnyBase();
                     return new AnyBase(fieldStr.IsWhiteSpace() ? "" : fieldStr.ToString());
+                case TypeInfo.EBaseType.Text:
+                    if ((flag & TypeInfo.ETypeFlag.Nullable) != 0 && fieldStr.IsWhiteSpace())
+                        return new AnyBase();
+                    return new AnyBase(fieldStr.IsWhiteSpace() ? "" : fieldStr.ToString());
                 case TypeInfo.EBaseType.Null:
                 case TypeInfo.EBaseType.Custom:
                 default: return new AnyBase();
@@ -393,6 +492,7 @@ namespace ConfImporter.Builtin.Util
                 TypeInfo.EBaseType.String => (flag & TypeInfo.ETypeFlag.Nullable) != 0 ? new AnyBase() : new AnyBase(""),
                 TypeInfo.EBaseType.Link => (flag & TypeInfo.ETypeFlag.Nullable) != 0 ? new AnyBase() : new AnyBase(""),
                 TypeInfo.EBaseType.Enum => (flag & TypeInfo.ETypeFlag.Nullable) != 0 ? new AnyBase() : new AnyBase(""),
+                TypeInfo.EBaseType.Text => (flag & TypeInfo.ETypeFlag.Nullable) != 0 ? new AnyBase() : new AnyBase(""),
                 // ReSharper restore RedundantCast
                 _ => new AnyBase(),
             };

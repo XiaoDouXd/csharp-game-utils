@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using XD.Common.Config.Helper;
 
 namespace XD.Common.Config
@@ -17,6 +18,32 @@ namespace XD.Common.Config
                              Dictionary<string, Dictionary<string, string>>>();
         }
 
+        /// <summary>
+        /// 获取国际化文本
+        /// </summary>
+        /// <param name="key">[Table,Key] 格式的本地化 key</param>
+        public string Get(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key)) return string.Empty;
+
+            // 解析 key [Table,Key]
+            var span = key.AsSpan().Trim();
+            if (span.Length <= 3) return "I<,>";
+            if (span[0] != '[' || span[^1] != ']') return $"I<{key}>";
+            span = span.Slice(1, span.Length - 2);
+            var idx = span.IndexOf(',');
+            if (idx <= 0) return $"I<{key}>";
+
+            var table = span[..idx].Trim().ToString();
+            var k = span[(idx + 1)..].Trim().ToString();
+            return Get(table, k);
+        }
+
+        /// <summary>
+        /// 获取国际化文本
+        /// </summary>
+        /// <param name="table">表名</param>
+        /// <param name="key">本地化 key 名</param>
         public string Get(string table, string key) => GetInner(table, key) ?? $"I<{table}, {key}>";
 
         public string Get<T>(string table, string key, T obj1)

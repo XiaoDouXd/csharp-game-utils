@@ -119,10 +119,29 @@ namespace XD.GameModule.Module.MConfig
                 }
                 // ReSharper restore InconsistentNaming
 
+                // 注解元数据 (热刷友好, 数据被生成代码写到 CfgMeta 静态成员里)
+                Task? metaLoader = null;
+                if (CfgUtil.CfgMetaCreateFunction != null && CfgUtil.CfgMetaReadFunction != null)
+                {
+                    metaLoader = Task.Run(async () =>
+                    {
+                        if (!CfgUtil.IsAsyncLoad)
+                        {
+                            // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
+                            var task = E.Tick?.Register(new TickTask());
+                            if (task != null) await task;
+                        }
+                        using var h = CfgUtil.CfgMetaReadFunction();
+                        if (h != null)
+                            MessagePackSerializer.Deserialize<CfgUtil.CfgMetaCreateResult>(await h);
+                    }, token);
+                }
+
                 await Task.WhenAll(
                     commonLoader ?? Task.CompletedTask,
                     globalLoader ?? Task.CompletedTask,
-                    localizationLoader ?? Task.CompletedTask
+                    localizationLoader ?? Task.CompletedTask,
+                    metaLoader ?? Task.CompletedTask
                 );
             }
             catch (Exception e)

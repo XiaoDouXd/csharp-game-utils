@@ -1,6 +1,5 @@
 ﻿
 using System.Collections.Generic;
-using System.IO;
 using System.Text;
 using System.Threading;
 using ConfImporter.Builtin.Type;
@@ -14,7 +13,8 @@ namespace ConfImporter.Builtin
     {
         public static void CommonPostGenByte(Config.ConfImporter conf, CancellationToken ct, IEnumerable<TableTypeDec.ITableInst> instList)
         {
-            // nothing to be done
+            // 注解元数据 bytes (与 Common/Global/I18n 同源, 支持运行时热刷)
+            CfgMetaGen.GenerateBytes(conf);
         }
 
         public static void CommonPostGenCode(Config.ConfImporter conf, CancellationToken ct, IEnumerable<TableTypeDec.ITableInst> instList)
@@ -51,10 +51,11 @@ using XD.GameModule.Module.MConfig;
                 }
                 sb.Append("}\n");
 
-                using var f = File.Create(conf.CodeOutputTargetDir + "/CfgGenStruct.g.cs");
-                using var fWriter = new StreamWriter(f);
-                fWriter.Write(sb.ToString());
+                TextFile.WriteAllText(conf.CodeOutputTargetDir + "/CfgGenStruct.g.cs", sb.ToString());
             }
+
+            // 生成 meta (类型注解) 反序列化器代码 - 不依赖 Types 字典, 在锁外做.
+            CfgMetaGen.GenerateCode(conf);
         }
 
         public static void CommonClear(Config.ConfImporter conf)

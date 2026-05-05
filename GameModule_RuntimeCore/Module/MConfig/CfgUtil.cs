@@ -18,9 +18,11 @@ namespace XD.GameModule.Module.MConfig
         public static bool IsAsyncLoad { get; set; }
         public static GlobalTableCreateDelegate? GlobalTableCreateFunction { internal get; set; }
         public static CommonTableCreateDelegate? CommonTableCreateFunction { internal get; set; }
+        public static CfgMetaCreateDelegate?     CfgMetaCreateFunction     { internal get; set; }
         public static Func<Task<byte[]>?>? GlobalTableReadFunction { internal get; set; }
         public static Func<Task<byte[]>?>? CommonTableReadFunction { internal get; set; }
         public static Func<Task<byte[]>?>? LocalizationTableReadFunction { internal get; set; }
+        public static Func<Task<byte[]>?>? CfgMetaReadFunction     { internal get; set; }
 
         // ReSharper disable once ClassNeverInstantiated.Global
         public static class TableGroupConstructor<TItem>  where TItem : CfgHelper.CfgTableItemBase

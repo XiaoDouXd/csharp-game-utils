@@ -3,6 +3,7 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Contracts;
+using System.Globalization;
 using ConfImporter.Builtin.Util.Gen;
 
 // ReSharper disable once CheckNamespace
@@ -315,7 +316,7 @@ namespace ConfImporter.Builtin.Type
         public static explicit operator byte(AnyBase self) => self.TypeCode switch
         {
             ETypeCode.Null => default,
-            ETypeCode.String => self._s == null ? default : byte.TryParse(self._s, out var v) ? v : default,
+            ETypeCode.String => self._s == null ? default : byte.TryParse(self._s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : default,
             ETypeCode.Float64 => (byte)self._d,
             ETypeCode.Float32 => (byte)self._f,
             _ => (byte)self._i
@@ -324,7 +325,7 @@ namespace ConfImporter.Builtin.Type
         public static explicit operator sbyte(AnyBase self) => self.TypeCode switch
         {
             ETypeCode.Null => default,
-            ETypeCode.String => self._s == null ? default : sbyte.TryParse(self._s, out var v) ? v : default,
+            ETypeCode.String => self._s == null ? default : sbyte.TryParse(self._s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : default,
             ETypeCode.Float64 => (sbyte)self._d,
             ETypeCode.Float32 => (sbyte)self._f,
             _ => (sbyte)self._i
@@ -333,7 +334,7 @@ namespace ConfImporter.Builtin.Type
         public static explicit operator short(AnyBase self) => self.TypeCode switch
         {
             ETypeCode.Null => default,
-            ETypeCode.String => self._s == null ? default : short.TryParse(self._s, out var v) ? v : default,
+            ETypeCode.String => self._s == null ? default : short.TryParse(self._s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : default,
             ETypeCode.Float64 => (short)self._d,
             ETypeCode.Float32 => (short)self._f,
             _ => (short)self._i
@@ -342,7 +343,7 @@ namespace ConfImporter.Builtin.Type
         public static explicit operator ushort(AnyBase self) => self.TypeCode switch
         {
             ETypeCode.Null => default,
-            ETypeCode.String => self._s == null ? default : ushort.TryParse(self._s, out var v) ? v : default,
+            ETypeCode.String => self._s == null ? default : ushort.TryParse(self._s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : default,
             ETypeCode.Float64 => (ushort)self._d,
             ETypeCode.Float32 => (ushort)self._f,
             _ => (ushort)self._i
@@ -351,7 +352,7 @@ namespace ConfImporter.Builtin.Type
         public static explicit operator int(AnyBase self) => self.TypeCode switch
         {
             ETypeCode.Null => default,
-            ETypeCode.String => self._s == null ? default : int.TryParse(self._s, out var v) ? v : default,
+            ETypeCode.String => self._s == null ? default : int.TryParse(self._s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : default,
             ETypeCode.Float64 => (int)self._d,
             ETypeCode.Float32 => (int)self._f,
             _ => (int)self._i
@@ -360,7 +361,7 @@ namespace ConfImporter.Builtin.Type
         public static explicit operator uint(AnyBase self) => self.TypeCode switch
         {
             ETypeCode.Null => default,
-            ETypeCode.String => self._s == null ? default : uint.TryParse(self._s, out var v) ? v : default,
+            ETypeCode.String => self._s == null ? default : uint.TryParse(self._s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : default,
             ETypeCode.Float64 => (uint)self._d,
             ETypeCode.Float32 => (uint)self._f,
             _ => (uint)self._i
@@ -369,7 +370,7 @@ namespace ConfImporter.Builtin.Type
         public static explicit operator long(AnyBase self) => self.TypeCode switch
         {
             ETypeCode.Null => default,
-            ETypeCode.String => self._s == null ? default : long.TryParse(self._s, out var v) ? v : default,
+            ETypeCode.String => self._s == null ? default : long.TryParse(self._s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : default,
             ETypeCode.Float64 => (long)self._d,
             ETypeCode.Float32 => (long)self._f,
             _ => self._i
@@ -378,7 +379,7 @@ namespace ConfImporter.Builtin.Type
         public static explicit operator ulong(AnyBase self) => self.TypeCode switch
         {
             ETypeCode.Null => default,
-            ETypeCode.String => self._s == null ? default : ulong.TryParse(self._s, out var v) ? v : default,
+            ETypeCode.String => self._s == null ? default : ulong.TryParse(self._s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : default,
             ETypeCode.Float64 => (ulong)self._d,
             ETypeCode.Float32 => (ulong)self._f,
             _ => (ulong)self._i
@@ -387,7 +388,7 @@ namespace ConfImporter.Builtin.Type
         public static explicit operator float(AnyBase self) => self.TypeCode switch
         {
             ETypeCode.Null => default,
-            ETypeCode.String => self._s == null ? default : float.TryParse(self._s, out var v) ? v : default,
+            ETypeCode.String => self._s == null ? default : float.TryParse(self._s, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : default,
             ETypeCode.Float64 => (float)self._d,
             ETypeCode.Float32 => self._f,
             _ => self._i
@@ -396,7 +397,7 @@ namespace ConfImporter.Builtin.Type
         public static explicit operator double(AnyBase self) => self.TypeCode switch
         {
             ETypeCode.Null => default,
-            ETypeCode.String => self._s == null ? default : double.TryParse(self._s, out var v) ? v : default,
+            ETypeCode.String => self._s == null ? default : double.TryParse(self._s, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : default,
             ETypeCode.Float64 => self._d,
             ETypeCode.Float32 => self._f,
             _ => self._i
@@ -406,11 +407,9 @@ namespace ConfImporter.Builtin.Type
         {
             ETypeCode.Null => null,
             ETypeCode.String => self._s,
-            // ReSharper disable SpecifyACultureInStringConversionExplicitly
-            ETypeCode.Float32 => self._f.ToString(),
-            ETypeCode.Float64 => self._d.ToString(),
-            // ReSharper restore SpecifyACultureInStringConversionExplicitly
-            _ => self._i.ToString()
+            ETypeCode.Float32 => self._f.ToString("R", CultureInfo.InvariantCulture),
+            ETypeCode.Float64 => self._d.ToString("R", CultureInfo.InvariantCulture),
+            _ => self._i.ToString(CultureInfo.InvariantCulture)
         };
 
         public static explicit operator Id(AnyBase self) => self.TypeCode switch
@@ -508,9 +507,9 @@ namespace ConfImporter.Builtin.Type
         {
             ETypeCode.Null => string.Empty,
             ETypeCode.String => _s ?? string.Empty,
-            ETypeCode.Float32 => _f.ToString(format),
-            ETypeCode.Float64 => _d.ToString(format),
-            _ => _i.ToString()
+            ETypeCode.Float32 => _f.ToString(format, CultureInfo.InvariantCulture),
+            ETypeCode.Float64 => _d.ToString(format, CultureInfo.InvariantCulture),
+            _ => _i.ToString(format, CultureInfo.InvariantCulture)
         };
 
         private long _i;

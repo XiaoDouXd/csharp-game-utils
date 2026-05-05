@@ -1,6 +1,7 @@
 ﻿#nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Contracts;
 using System.Text;
@@ -36,7 +37,7 @@ namespace ConfImporter.Builtin.Type
                 TypeInfo.EBaseType.String;
         }
     }
-    
+
     internal struct TypeInfo
     {
         /// <summary> 最大字段数 </summary>
@@ -75,6 +76,11 @@ namespace ConfImporter.Builtin.Type
             Link,
             /// <summary> 枚举类型 </summary>
             Enum,
+            /// <summary>
+            /// 本地化 key 类型. 书写形如 [TABLE,KEY], 导出后的字符串保持该原始书写,
+            /// 方便运行时根据本地化表查询与工具侧校验.
+            /// </summary>
+            Text,
             /// <summary> 自定义类型 </summary>
             Custom
         }
@@ -118,8 +124,144 @@ namespace ConfImporter.Builtin.Type
                 a.Type != b.Type && a.Name != b.Name && a.Flag != b.Flag;
         }
 
-        /// <summary> 类型注解 </summary>
-        public string Attribute { get; set; }
+        /// <summary>
+        /// 原始类型注解字符串. 格式形如: <c>&lt;key1=value1, key2, key3=value3&gt;</c>,
+        /// 以半角逗号分隔多项; 每项可以是无值的 tag (如 <c>asset</c>), 也可以是 key=value 形式 (如 <c>index=World</c>).
+        /// <para> 注解支持的内建项目详见 <see cref="AttrKeys"/>. </para>
+        /// </summary>
+        public string Attribute
+        {
+            get => _attribute ?? string.Empty;
+            set
+            {
+                _attribute = value;
+                _attrDict = null; // lazy
+            }
+        }
+
+        /// <summary> 解析后的注解键值表 (key 全部转为小写). </summary>
+        public IReadOnlyDictionary<string, string> AttributeMap
+        {
+            get
+            {
+                if (_attrDict != null) return _attrDict;
+                _attrDict = ParseAttribute(_attribute ?? string.Empty);
+                return _attrDict;
+            }
+        }
+
+        /// <summary>
+        /// 获取注解项. key 大小写不敏感. 若注解项没有值 (如 <c>&lt;asset&gt;</c>), 返回空串. 不存在返回 null.
+        /// </summary>
+        [Pure]
+        public bool TryGetAttr(string key, out string value)
+        {
+            if (string.IsNullOrEmpty(key))
+            {
+                value = string.Empty;
+                return false;
+            }
+            var map = AttributeMap;
+            if (map.TryGetValue(key.ToLowerInvariant(), out var v))
+            {
+                value = v;
+                return true;
+            }
+            value = string.Empty;
+            return false;
+        }
+
+        [Pure]
+        public bool HasAttr(string key) => TryGetAttr(key, out _);
+
+        /// <summary>
+        /// 解析注解原始字符串. 形态:
+        /// <code>
+        ///   key1=value1, key2, key3="任意 包含, 和=的内容", key4=value4
+        /// </code>
+        /// 引号支持半角 / 全角, 用反斜杠 <c>\</c> 转义引号自身. 同名 key 后者覆盖前者.
+        /// </summary>
+        internal static IReadOnlyDictionary<string, string> ParseAttribute(string attr)
+        {
+            var dict = new Dictionary<string, string>();
+            if (string.IsNullOrEmpty(attr)) return dict;
+
+            var s = attr;
+            var i = 0;
+            while (i < s.Length)
+            {
+                // 跳过前导空白和分隔符
+                while (i < s.Length && (char.IsWhiteSpace(s[i]) || s[i] == ',' || s[i] == '，')) i++;
+                if (i >= s.Length) break;
+
+                // 读 key (裸串, 直到 '=' 或 ',' 或 '>' 或行末)
+                var keyStart = i;
+                while (i < s.Length)
+                {
+                    var c = s[i];
+                    if (c == '=' || c == ',' || c == '，') break;
+                    i++;
+                }
+                var key = s.Substring(keyStart, i - keyStart).Trim();
+                if (key.Length == 0)
+                {
+                    // 跳到下一个分隔符
+                    while (i < s.Length && s[i] != ',' && s[i] != '，') i++;
+                    continue;
+                }
+                key = key.ToLowerInvariant();
+
+                // 默认无值
+                var value = string.Empty;
+                if (i < s.Length && s[i] == '=')
+                {
+                    i++; // 吃掉 '='
+                    while (i < s.Length && char.IsWhiteSpace(s[i])) i++;
+                    if (i < s.Length && IsQuoteChar(s[i]))
+                    {
+                        // "..." 引号串 (允许 \ 转义)
+                        i++;
+                        var sb = new StringBuilder();
+                        while (i < s.Length)
+                        {
+                            var c = s[i];
+                            if (c == '\\' && i + 1 < s.Length)
+                            {
+                                sb.Append(s[i + 1]);
+                                i += 2;
+                                continue;
+                            }
+                            if (IsQuoteChar(c)) { i++; break; }
+                            sb.Append(c);
+                            i++;
+                        }
+                        value = sb.ToString();
+                        // 跳过尾随空白/分隔符
+                        while (i < s.Length && char.IsWhiteSpace(s[i])) i++;
+                    }
+                    else
+                    {
+                        var valStart = i;
+                        while (i < s.Length && s[i] != ',' && s[i] != '，') i++;
+                        value = s.Substring(valStart, i - valStart).Trim();
+                    }
+                }
+
+                dict[key] = value;
+            }
+            return dict;
+
+            static bool IsQuoteChar(char c) => c is '"' or '\u201C' or '\u201D';
+        }
+
+        /// <summary> 常用注解 key, 导表校验时消费. </summary>
+        public static class AttrKeys
+        {
+            /// <summary> 指示当前字段的值必须存在于某个普通表的主键中, value 为目标普通表名. </summary>
+            public const string Index = "index";
+            /// <summary> 指示当前字段的值必须是引擎能够解析的资产路径 (如 res://...). </summary>
+            public const string Asset = "asset";
+        }
 
         /// <summary> 类型别名, 如果是容器, 则返回容器内元素类型的别名 </summary>
         public string Alias => _alias;
@@ -219,7 +361,8 @@ namespace ConfImporter.Builtin.Type
             _container = EContainer.None;
             _flag = flag;
             _valFlag = flag;
-            Attribute = string.Empty;
+            _attribute = string.Empty;
+            _attrDict = null;
         }
 
         public TypeInfo(EContainer container, EBaseType keyType, ETypeFlag valFlag, ETypeFlag flag)
@@ -485,13 +628,102 @@ namespace ConfImporter.Builtin.Type
                 EBaseType.String => "S",
                 EBaseType.Link => "T",
                 EBaseType.Enum => "E",
+                EBaseType.Text => "X",
                 // EBaseType.Custom => "C",
                 _ => "_"
             };
 
+        /// <summary>
+        /// 友好的类型名 (供导出 JSON / 调试日志使用), 与
+        /// <see cref="ConfImporter.Builtin.Util.Analyzer"/> 内部的 TypeMap 关键字对齐.
+        /// </summary>
+        public static string BaseTypeName(EBaseType type)
+            => type switch
+            {
+                EBaseType.Null => "null",
+                EBaseType.Bool => "bool",
+                EBaseType.Int8 => "int8",
+                EBaseType.Int16 => "int16",
+                EBaseType.Int32 => "int32",
+                EBaseType.Int64 => "int64",
+                EBaseType.UInt8 => "uint8",
+                EBaseType.UInt16 => "uint16",
+                EBaseType.UInt32 => "uint32",
+                EBaseType.UInt64 => "uint64",
+                EBaseType.Float32 => "float32",
+                EBaseType.Float64 => "float64",
+                EBaseType.String => "string",
+                EBaseType.Link => "link",
+                EBaseType.Enum => "enum",
+                EBaseType.Text => "text",
+                EBaseType.Custom => "custom",
+                _ => "unknown"
+            };
+
+        /// <summary>
+        /// 友好的全类型描述 (含容器 / 字段 / 注解 / flag), 适合写到 JSON 的 type 字段.
+        /// 形如:
+        ///   <c>int32?</c>
+        ///   <c>{int32 a, string? b}custom!</c>
+        ///   <c>int32&lt;index=World&gt;[]</c>
+        ///   <c>string[int32]?</c>
+        /// </summary>
+        [Pure]
+        public string ToFriendlyString()
+        {
+            var sb = new StringBuilder();
+            // value 部分
+            if (ValType == EBaseType.Custom)
+            {
+                if (_fieldCount > 0)
+                {
+                    sb.Append('{');
+                    for (var i = 0; i < _fieldCount; i++)
+                    {
+                        var f = this[i];
+                        if (i != 0) sb.Append(", ");
+                        sb.Append(BaseTypeName(f.Type));
+                        if ((f.Flag & ETypeFlag.Nullable) != 0) sb.Append('?');
+                        sb.Append(' ').Append(f.Name);
+                    }
+                    sb.Append('}');
+                    if (!string.IsNullOrEmpty(_alias)) sb.Append(_alias);
+                }
+                else if (!string.IsNullOrEmpty(_alias))
+                {
+                    sb.Append(_alias);
+                }
+                else sb.Append("custom");
+            }
+            else sb.Append(BaseTypeName(ValType));
+
+            // value flag
+            if ((ValFlag & ETypeFlag.Nullable) != 0) sb.Append('?');
+
+            // 注解
+            if (!string.IsNullOrEmpty(_attribute)) sb.Append('<').Append(_attribute).Append('>');
+
+            // 容器
+            switch (_container)
+            {
+                case EContainer.Array:
+                    sb.Append("[]");
+                    if ((Flag & ETypeFlag.Nullable) != 0) sb.Append('?');
+                    break;
+                case EContainer.Dictionary:
+                    sb.Append('[').Append(BaseTypeName(KeyType)).Append(']');
+                    if ((Flag & ETypeFlag.Nullable) != 0) sb.Append('?');
+                    break;
+            }
+            return sb.ToString();
+        }
+
         private ETypeFlag _valFlag;
         private string _alias;
         private byte _fieldCount;
+
+        private string? _attribute;
+        private IReadOnlyDictionary<string, string>? _attrDict;
 
         private readonly ETypeFlag _flag;
 

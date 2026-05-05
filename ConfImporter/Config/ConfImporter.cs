@@ -67,6 +67,19 @@ namespace ConfImporter.Config
         public string CodeOutputTargetDir { get; set; } = "./";
 
         /// <summary>
+        /// 友好排版 JSON 导出目标. 为空时回落到 <see cref="ByteOutputTargetDir"/>
+        /// (兼容老用法). 推荐设置成与 bytes 不同的目录, 避免人工/工具阅读用的 .json
+        /// 与发布期产物 .bytes 混在一起.
+        /// </summary>
+        public string JsonOutputTargetDir { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 取实际写 JSON 用的目录: 优先 <see cref="JsonOutputTargetDir"/>, 空则回落到 <see cref="ByteOutputTargetDir"/>.
+        /// </summary>
+        public string ResolveJsonOutputDir() =>
+            string.IsNullOrWhiteSpace(JsonOutputTargetDir) ? ByteOutputTargetDir : JsonOutputTargetDir;
+
+        /// <summary>
         /// 名空间
         /// </summary>
         public string? CodeNamespace { get; set; } = null;

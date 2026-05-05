@@ -144,6 +144,7 @@ namespace ConfImporter.Builtin.Util
                 TypeInfo.EBaseType.String => "string",
                 TypeInfo.EBaseType.Link => "CfgHelper.Link",
                 TypeInfo.EBaseType.Enum => "string",
+                TypeInfo.EBaseType.Text => "string",
                 _ => "_"
             };
             if ((flag & TypeInfo.ETypeFlag.Nullable) != 0)
@@ -178,12 +179,13 @@ namespace ConfImporter.Builtin.Util
                     TypeInfo.EBaseType.Float32 => "F32Nullable",
                     TypeInfo.EBaseType.Float64 => "F64Nullable",
                     TypeInfo.EBaseType.Enum => "StringNullable",
+                    TypeInfo.EBaseType.Text => "StringNullable",
                     TypeInfo.EBaseType.String => "StringNullable",
                     _ => "_",
                 };
             }
 
-            if (type is TypeInfo.EBaseType.String or TypeInfo.EBaseType.Enum) return "CfgUtil.BaseConstructorFuncMethods.ConstructorString";
+            if (type is TypeInfo.EBaseType.String or TypeInfo.EBaseType.Enum or TypeInfo.EBaseType.Text) return "CfgUtil.BaseConstructorFuncMethods.ConstructorString";
             return "CfgUtil.BaseConstructorFuncMethods.Constructor" + type switch
             {
                 TypeInfo.EBaseType.Bool => "Bool",

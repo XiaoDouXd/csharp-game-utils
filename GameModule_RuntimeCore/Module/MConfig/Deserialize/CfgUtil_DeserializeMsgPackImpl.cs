@@ -414,6 +414,27 @@ namespace XD.GameModule.Module.MConfig
                 return GlobalTableCreateFunction(ref data, new DeserializeMsgPackImpl{IsGlobal = true});
             }
         }
+
+        [MessagePackObject]
+        public readonly partial struct CfgMetaCreateResult{}
+        public class CfgMetaCreateResultResolver : IMessagePackFormatter<CfgMetaCreateResult>
+        {
+            public void Serialize(ref MessagePackWriter writer, CfgMetaCreateResult value, MessagePackSerializerOptions options)
+                => throw new NotImplementedException();
+
+            public CfgMetaCreateResult Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options)
+            {
+                if (CfgMetaCreateFunction == null) return default;
+                var data = new SerializedData
+                {
+                    Reader = reader,
+                    Options = options
+                };
+                // CfgMeta 在结构上和 GlobalTable 类似 (扁平 [version, ...]), 不需要 IsGlobal=true 也行,
+                // 但生成代码用 BeginScope/EndScope, 与 IsGlobal 无关. 这里默认 false.
+                return CfgMetaCreateFunction(ref data, new DeserializeMsgPackImpl());
+            }
+        }
     }
 }
 #endif

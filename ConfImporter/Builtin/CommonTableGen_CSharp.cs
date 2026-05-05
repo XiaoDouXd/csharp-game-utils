@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 using ConfImporter.Builtin.Type;
 using ConfImporter.Builtin.Util;
+using ConfImporter.Builtin.Util.Gen;
 using MessagePack;
 
 // ReSharper disable once CheckNamespace
@@ -51,9 +52,7 @@ namespace {tableNamespace}
             lock (_cfg) cfgList = _cfg.Values.Where(inst => inst is { IsBreak: false, Fields: { Count: > 0 } }).ToArray();
             if (cfgList is not { Length: > 0 })
             {
-                using var fEmpty = File.Create(Conf.CodeOutputTargetDir + "/CfgGenTable.g.cs");
-                using var fWriterEmpty = new StreamWriter(fEmpty);
-                fWriterEmpty.Write("");
+                TextFile.WriteAllText(Conf.CodeOutputTargetDir + "/CfgGenTable.g.cs", string.Empty);
                 return;
             }
 
@@ -220,9 +219,7 @@ namespace {tableNamespace}
             sb.Append(sbTableCreator);
             sb.Append($"{indent}{indent}{indent}}};\n{indent}{indent}{indent}method.EndScope(ref data);\n{indent}{indent}{indent}return new CfgUtil.CommonTableCreateResult(ret, version);\n{indent}{indent}}}\n{indent}}}\n");
             sb.Append("}\n");
-            using var f = File.Create(Conf.CodeOutputTargetDir + "/CfgGenTable.g.cs");
-            using var fWriter = new StreamWriter(f);
-            fWriter.Write(sb.ToString());
+            TextFile.WriteAllText(Conf.CodeOutputTargetDir + "/CfgGenTable.g.cs", sb.ToString());
             return;
 
             static string GetFieldTypeName(in TypeInfo info, string typeStr)
@@ -261,12 +258,17 @@ namespace {tableNamespace}
             lock (_cfg) cfgList = _cfg.Values.Where(inst => inst is { IsBreak: false, Fields: { Count: > 0 } }).ToArray();
             if (cfgList is not { Length: > 0 })
             {
-                using var fEmpty = File.Create(Conf.ByteOutputTargetDir + "/CommonTable.bytes");
-                using var fWriterEmpty = new StreamWriter(fEmpty);
-                fWriterEmpty.Write("");
+                // 空数据也写出占位文件 (用 UTF-8 无 BOM)
+                File.WriteAllText(Conf.ByteOutputTargetDir + "/CommonTable.bytes", string.Empty,
+                    new UTF8Encoding(false));
+                var emptyJsonDir = Conf.ResolveJsonOutputDir();
+                Directory.CreateDirectory(emptyJsonDir);
+                File.WriteAllText(emptyJsonDir + "/CommonTable.json", "{}\n",
+                    new UTF8Encoding(false));
                 return;
             }
 
+            // ── 二进制 (列表化, 与运行时反序列化对齐, 不变) ──
             var table = new List<object>{ Conf.Version };
             for (var idy = 1; idy <= cfgList.Length; idy++)
             {
@@ -318,11 +320,16 @@ namespace {tableNamespace}
                 }
             }
             var bytes = MessagePackSerializer.Serialize(table.ToArray());
-            using var f = File.Create(Conf.ByteOutputTargetDir + "/CommonTable.bytes");
-            f.Write(bytes);
-            using var fJson = File.Create(Conf.ByteOutputTargetDir + "/CommonTable.json");
-            using var fJsonWriter = new StreamWriter(fJson);
-            fJsonWriter.Write(MessagePackSerializer.ConvertToJson(bytes));
+            using (var f = File.Create(Conf.ByteOutputTargetDir + "/CommonTable.bytes"))
+            {
+                f.Write(bytes, 0, bytes.Length);
+            }
+
+            // ── JSON (友好结构, 仅供人工 / 工具阅读, 不参与运行时加载) ──
+            var jsonRoot = BuildJsonRoot(cfgList);
+            var jsonDir = Conf.ResolveJsonOutputDir();
+            Directory.CreateDirectory(jsonDir);
+            PrettyJson.WriteFile(jsonDir + "/CommonTable.json", jsonRoot);
             return;
 
             static int FormatFieldIdx( SortedDictionary<string,FieldInfo> fields)
@@ -337,6 +344,76 @@ namespace {tableNamespace}
                 }
                 return idx;
             }
+        }
+
+        /// <summary>
+        /// 把所有合法表/字段/行数据组织为友好 JSON 结构, 形如:
+        /// <code>
+        /// {
+        ///   "version": 1,
+        ///   "tables": [
+        ///     {
+        ///       "name": "World",
+        ///       "fields": [ { "name": "Id", "type": "int32", "attribute": "" }, ... ],
+        ///       "rows": [ { "id": 1, "subId": "", "data": { "Id": 1, "path": "..." } }, ... ]
+        ///     }
+        ///   ]
+        /// }
+        /// </code>
+        /// </summary>
+        private object BuildJsonRoot(CombinedTableInst[] cfgList)
+        {
+            var tablesJson = new List<object?>();
+            foreach (var inst in cfgList)
+            {
+                var fieldsJson = new List<object?>();
+                foreach (var fname in inst.Fields.Keys)
+                {
+                    if (!inst.Fields.TryGetValue(fname, out var fi)) continue;
+                    if (fi.Type is not { } t) continue;
+                    fieldsJson.Add(new Dictionary<string, object?>
+                    {
+                        ["name"] = fi.Name,
+                        ["type"] = t.ToFriendlyString(),
+                        ["attribute"] = t.Attribute ?? string.Empty,
+                    });
+                }
+
+                var rowsJson = new List<object?>();
+                foreach (var single in inst.Tables.Values)
+                {
+                    foreach (var row in single.DataList)
+                    {
+                        var fieldData = new List<KeyValuePair<string, object?>>();
+                        foreach (var (fname, value) in row.Data)
+                            fieldData.Add(new KeyValuePair<string, object?>(fname, value));
+                        rowsJson.Add(new Dictionary<string, object?>
+                        {
+                            ["id"]    = IdToJson(row.Id),
+                            ["subId"] = single.Id ?? string.Empty,
+                            ["data"]  = fieldData,
+                        });
+                    }
+                }
+
+                tablesJson.Add(new Dictionary<string, object?>
+                {
+                    ["name"]   = inst.Name,
+                    ["fields"] = fieldsJson,
+                    ["rows"]   = rowsJson,
+                });
+            }
+            return new Dictionary<string, object?>
+            {
+                ["version"] = Conf.Version,
+                ["tables"]  = tablesJson,
+            };
+        }
+
+        private static object? IdToJson(Id id)
+        {
+            if (id.IsNull) return null;
+            return id.IsNumId ? id.Num : id.Str;
         }
     }
 }
