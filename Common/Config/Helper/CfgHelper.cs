@@ -105,17 +105,20 @@ namespace XD.Common.Config.Helper
 
         public abstract class TableGroup
         {
+            public abstract ITable DefaultBase { get; }
             public abstract Type Type { get; }
             public abstract string Name { get; }
+            public abstract IReadOnlyList<string> Fields { get; }
         }
 
         // ReSharper disable once ClassNeverInstantiated.Global
         public sealed class TableGroup<TItem> : TableGroup, IReadOnlyDictionary<string, Table<TItem>> where TItem : CfgTableItemBase
         {
+            public override ITable DefaultBase => Default;
             public Table<TItem> Default { get; private set; }
 
             public override string Name { get; }
-            public IReadOnlyList<string> Fields { get; }
+            public override IReadOnlyList<string> Fields { get; }
             public override Type Type => typeof(TItem);
 
             public struct ConstructData
