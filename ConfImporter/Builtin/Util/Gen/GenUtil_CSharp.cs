@@ -18,7 +18,7 @@ namespace ConfImporter.Builtin.Util
             if (!isAppend) sbA.Clear();
             sbB.Clear();
 
-            sbA.Append(baseIndent).Append("public readonly struct ");
+            sbA.Append(baseIndent).Append("public struct ");
             var id = type.GetTypeIdentity(sbA, sbB, true);
             sbA.Append(" : CfgHelper.ICustomStruct\n").Append(baseIndent).Append('{').Append('\n');
 
@@ -44,13 +44,33 @@ namespace ConfImporter.Builtin.Util
             for (var i = 0; i < type.FieldCount; i++)
             {
                 var field = type[i];
+                var isFieldNullable = IsFieldNullableOrReference(field);
+                // Unsafe.As 的 TFrom: 引用类型不带 ?, 值类型保留 nullable
+                var isReferenceType = field.Type is TypeInfo.EBaseType.String or TypeInfo.EBaseType.Enum or TypeInfo.EBaseType.Text;
+                var unsafeFromType = isReferenceType
+                    ? GetFieldType(field.Type, TypeInfo.ETypeFlag.None, false)
+                    : GetFieldType(field.Type, field.Flag, false);
+
                 sbA.Append(baseIndent)
                     .Append(oneIndent)
                     .Append(oneIndent)
                     .Append(oneIndent)
-                    .Append("case nameof(@").Append(field.Name)
-                    .Append("): if (this.@").Append(field.Name).Append(" is T) { value = (T)(object)this.@")
-                    .Append(field.Name).Append("; return true; } else return false;\n");
+                    .Append("case nameof(@").Append(field.Name).Append("): ");
+                if (isFieldNullable)
+                {
+                    sbA.Append("if (this.@").Append(field.Name)
+                        .Append(" != null && this.@").Append(field.Name)
+                        .Append(".GetType() == typeof(T)) { value = Unsafe.As<")
+                        .Append(unsafeFromType).Append(", T>(ref this.@").Append(field.Name)
+                        .Append(")!; return true; } else return false;\n");
+                }
+                else
+                {
+                    sbA.Append("if (this.@").Append(field.Name)
+                        .Append(".GetType() == typeof(T)) { value = Unsafe.As<")
+                        .Append(unsafeFromType).Append(", T>(ref this.@").Append(field.Name)
+                        .Append(")!; return true; } else return false;\n");
+                }
             }
             sbA.Append(baseIndent).Append(oneIndent).Append(oneIndent).Append(oneIndent)
                 .Append("default: return false;\n")
@@ -119,9 +139,20 @@ namespace ConfImporter.Builtin.Util
 
             static void WriteField(in TypeInfo.Field field, StringBuilder sbA, string oneIndent)
             {
-                sbA.Append(oneIndent).Append("public readonly ");
+                sbA.Append(oneIndent).Append("public ");
                 sbA.Append(GetFieldType(field.Type, field.Flag, false));
                 sbA.Append(" @").Append(field.Name).Append(';');
+            }
+
+            static bool IsFieldNullableOrReference(in TypeInfo.Field field)
+            {
+                // string / Enum / Text 是引用类型
+                if (field.Type is TypeInfo.EBaseType.String or TypeInfo.EBaseType.Enum or TypeInfo.EBaseType.Text)
+                    return true;
+                // 有 Nullable 标记 → 可空
+                if ((field.Flag & TypeInfo.ETypeFlag.Nullable) != 0)
+                    return true;
+                return false;
             }
         }
 
@@ -150,6 +181,77 @@ namespace ConfImporter.Builtin.Util
             if ((flag & TypeInfo.ETypeFlag.Nullable) != 0)
                 return ret + '?';
             return ret;
+        }
+
+        /// <summary>
+        /// 判断字段是否为引用类型或可空值类型 (需要在 __TryGet 中判空).
+        /// </summary>
+        public static bool IsNullableOrReferenceType(in TypeInfo info, bool isId)
+        {
+            // 容器类型 (IReadOnlyList / IReadOnlyDictionary) 是引用类型
+            if (info.Container != TypeInfo.EContainer.None) return true;
+
+            // 外层有 Nullable 标记 → 可空值类型 or 可空引用类型, 都需要判空
+            if ((info.Flag & TypeInfo.ETypeFlag.Nullable) != 0) return true;
+
+            // string / Enum / Text 在 C# 中是引用类型
+            if (info.ValType is TypeInfo.EBaseType.String or TypeInfo.EBaseType.Enum or TypeInfo.EBaseType.Text)
+                return true;
+
+            // Link 是 struct, 不需要判空; Id 也是 struct
+            // Custom 不带 nullable 也是 struct
+            return false;
+        }
+
+        /// <summary>
+        /// 获取用于 Unsafe.As&lt;TFrom, TTo&gt; 中 TFrom 的类型名.
+        /// 对于引用类型不带 '?' (运行时无区别); 对于值类型保留 nullable 标记 (Nullable&lt;T&gt; 与 T 是不同类型).
+        /// </summary>
+        public static string GetUnsafeAsTypeName(in TypeInfo info, string typeIdentity, bool isId)
+        {
+            // 对于容器类型, 需要拼完整的泛型声明 (容器本身是引用类型, 不带尾部 ?)
+            switch (info.Container)
+            {
+                case TypeInfo.EContainer.Array:
+                {
+                    var valStr = info.ValType == TypeInfo.EBaseType.Custom
+                        ? $"CfgGenStruct.{typeIdentity}"
+                        : GetFieldType(info.ValType, TypeInfo.ETypeFlag.None, false);
+                    if ((info.ValFlag & TypeInfo.ETypeFlag.Nullable) != 0) valStr += '?';
+                    return "IReadOnlyList<" + valStr + ">";
+                }
+                case TypeInfo.EContainer.Dictionary:
+                {
+                    var valStr = info.ValType == TypeInfo.EBaseType.Custom
+                        ? $"CfgGenStruct.{typeIdentity}"
+                        : GetFieldType(info.ValType, TypeInfo.ETypeFlag.None, false);
+                    if ((info.ValFlag & TypeInfo.ETypeFlag.Nullable) != 0) valStr += '?';
+                    var keyStr = GetFieldType(info.KeyType, TypeInfo.ETypeFlag.None, false);
+                    return "IReadOnlyDictionary<" + keyStr + ", " + valStr + ">";
+                }
+            }
+
+            // 非容器, Id 特殊处理
+            if (isId && info.ValType.IsTypeCanBeId()) return "CfgHelper.Id";
+
+            // Custom struct — 如果外层 nullable 则带 ?
+            if (info.ValType == TypeInfo.EBaseType.Custom)
+            {
+                var result = $"CfgGenStruct.{typeIdentity}";
+                if ((info.Flag & TypeInfo.ETypeFlag.Nullable) != 0) result += '?';
+                return result;
+            }
+
+            // Link — 值类型, 需保留 nullable
+            if (info.ValType == TypeInfo.EBaseType.Link)
+                return (info.Flag & TypeInfo.ETypeFlag.Nullable) != 0 ? "CfgHelper.Link?" : "CfgHelper.Link";
+
+            // string / Enum / Text — 引用类型, 不带 ? (运行时同类型)
+            if (info.ValType is TypeInfo.EBaseType.String or TypeInfo.EBaseType.Enum or TypeInfo.EBaseType.Text)
+                return "string";
+
+            // 基础值类型 — 保留 nullable 标记
+            return GetFieldType(info.ValType, info.Flag, false);
         }
 
         public static string GetCustomTypeCastFunctionName(string typeIdentity, bool isNullable)

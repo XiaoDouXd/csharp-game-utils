@@ -29,11 +29,12 @@ using System;
 using System.Collections;
 using XD.Common.Config.Helper;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using XD.GameModule.Module.MConfig;
 
 // ReSharper disable All
 // ReSharper disable InconsistentNaming
-#pragma warning disable CS8618, CS9264, CS8631
+#pragma warning disable CS8618, CS9264, CS8631, CS8600, CS8601, CS8602, CS8603, CS8604, CS8625, CS8073
 
 // ReSharper disable once CheckNamespace
 namespace {tableNamespace}
@@ -126,8 +127,22 @@ namespace {tableNamespace}
                     // 接口
                     sb.Append(indent).Append(indent)
                         .Append((isId ? "public override " : "public ") + typeStr + ' ' + name + " => " + defName + ";\n");
-                    sbInterface.Append($"{indent}{indent}{indent}{indent}case nameof(this.{name}): ")
-                        .Append($"if (this.{name} is T) {{ value = (T)(object)this.{defName}!; return true; }} else return false;\n");
+
+                    // 判断字段是否需要判空 (class 对象或可空 value type 需要判空)
+                    var needsNullCheck = CSharpGenUtil.IsNullableOrReferenceType(field.Type!.Value, isId);
+                    // 获取 backing field 的非空基础类型名用于 Unsafe.As
+                    var unsafeAsType = CSharpGenUtil.GetUnsafeAsTypeName(field.Type!.Value, typeIdentity, isId);
+
+                    if (needsNullCheck)
+                    {
+                        sbInterface.Append($"{indent}{indent}{indent}{indent}case nameof(this.{name}): ")
+                            .Append($"if (this.{defName} != null && this.{defName}.GetType() == typeof(T)) {{ value = Unsafe.As<{unsafeAsType}, T>(ref this.{defName})!; return true; }} else return false;\n");
+                    }
+                    else
+                    {
+                        sbInterface.Append($"{indent}{indent}{indent}{indent}case nameof(this.{name}): ")
+                            .Append($"if (this.{defName}.GetType() == typeof(T)) {{ value = Unsafe.As<{unsafeAsType}, T>(ref this.{defName})!; return true; }} else return false;\n");
+                    }
 
                     // 构造函数
                     if (fieldIdx != 0) sbConstructParams.Append(", ");
@@ -167,7 +182,7 @@ namespace {tableNamespace}
                     }
                     // 字段定义
                     sbDeclared.Append(indent).Append(indent)
-                        .Append("private readonly " + typeStr + ' ' + defName + " = default!;\n");
+                        .Append("private " + typeStr + ' ' + defName + " = default!;\n");
                     if (fieldIdx != 0) sbTempC.Append(", ");
                     sbTempC.Append($"\"{field.Name}\"");
 

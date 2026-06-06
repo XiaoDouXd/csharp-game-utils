@@ -28,12 +28,13 @@ namespace ConfImporter.Builtin
                 var sb = new StringBuilder();
                 sb.Append(@"#nullable enable
 
+using System.Runtime.CompilerServices;
 using XD.Common.Config.Helper;
 using XD.GameModule.Module.MConfig;
 
 // ReSharper disable All
 // ReSharper disable InconsistentNaming
-#pragma warning disable CS8618, CS9264
+#pragma warning disable CS8618, CS9264, CS8600, CS8601, CS8602, CS8603, CS8604, CS8625, CS8073
 
 // ReSharper disable once CheckNamespace
 ");

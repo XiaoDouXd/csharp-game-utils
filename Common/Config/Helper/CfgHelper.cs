@@ -19,8 +19,6 @@ namespace XD.Common.Config.Helper
     public static partial class CfgHelper
     {
         #region table
-        public static bool IsAsyncLoad { get; set; }
-
         public abstract class CfgTableItemBase : ICustomStruct
         {
             public abstract Id Id { get; }
@@ -57,7 +55,9 @@ namespace XD.Common.Config.Helper
             public int Count => Items.Count;
             public IEnumerable<Id> Keys => _dict.Keys;
             public IEnumerable<TItem> Values => Items;
-            public TItem this[Id key] => _dict.TryGetValue(key, out var v) ? v : null!;
+#pragma warning disable CS8766 // 返回类型中引用类型的为 Null 性与隐式实现的成员不匹配(可能是由于为 Null 性特性)。
+            public TItem? this[Id key] => _dict.GetValueOrDefault(key);
+#pragma warning restore CS8766 // 返回类型中引用类型的为 Null 性与隐式实现的成员不匹配(可能是由于为 Null 性特性)。
             public bool ContainsKey(Id key) => _dict.ContainsKey(key);
             public bool TryGetValue(Id key, out TItem value) => _dict.TryGetValue(key, out value);
             IEnumerator IEnumerable.GetEnumerator() => _dict.GetEnumerator();
@@ -215,28 +215,36 @@ namespace XD.Common.Config.Helper
         #region builtin types
         public readonly struct Id : IEquatable<Id>, IComparable<Id>
         {
+            private const string NotString = "\0"; // 0 字符会被 trim, 所以这个值是不可能的. 在此作为非 string 的标志
+
             public readonly long Num;
             private readonly string? _str;
 
             #region Props
             public bool IsNull => _str == null;
-            public bool IsNumId => _str == string.Empty;
-            public string Str => _str == string.Empty ? Num.ToString() : _str ?? string.Empty;
+            public bool IsNumId => _str == NotString;
+            public string Str => _str == NotString ? Num.ToString() : _str ?? string.Empty;
             #endregion
 
             #region equals
             public bool Equals(Id other)
             {
                 if (IsNull) return other.IsNull;
-
                 if (IsNumId != other.IsNumId) return false;
-                if (IsNumId) return Num == other.Num;
-                return _str == other._str;
+                return IsNumId ? Num == other.Num : _str == other._str;
             }
             public override bool Equals(object? obj) => obj is Id other && Equals(other);
             public override int GetHashCode() => IsNumId ? Num.GetHashCode() : _str?.GetHashCode() ?? 0;
             public static bool operator ==(Id left, Id right) => left.Equals(right);
             public static bool operator !=(Id left, Id right) => !(left == right);
+            public static bool operator ==(Id left, long right) => left.Equals(new Id(right));
+            public static bool operator !=(Id left, long right) => !(left == right);
+            public static bool operator ==(long left, Id right) => right.Equals(new Id(left));
+            public static bool operator !=(long left, Id right) => !(left == right);
+            public static bool operator ==(Id left, string right) => left.Equals(new Id(right));
+            public static bool operator !=(Id left, string right) => !(left == right);
+            public static bool operator ==(string left, Id right) => right.Equals(new Id(left));
+            public static bool operator !=(string left, Id right) => !(left == right);
             #endregion
 
             #region compare
@@ -268,13 +276,13 @@ namespace XD.Common.Config.Helper
             public Id(long num)
             {
                 Num = num;
-                _str = string.Empty;
+                _str = NotString;
             }
 
             public Id(string? str)
             {
                 Num = 0;
-                _str = str ?? string.Empty;
+                _str = str == NotString ? "" : str?.Trim();
             }
 
             public override string ToString() => (string?)this ?? string.Empty;
@@ -302,11 +310,11 @@ namespace XD.Common.Config.Helper
                         _str = null;
                         return;
                     case string s:
-                        _str = s;
+                        _str = s == NotString ? "" : s.Trim();
                         Num = 0;
                         return;
                     default:
-                        _str = string.Empty;
+                        _str = NotString;
                         Num = Convert.ToInt64(data);
                         return;
                 }
