@@ -55,9 +55,9 @@ namespace XD.Common.Config.Helper
             public int Count => Items.Count;
             public IEnumerable<Id> Keys => _dict.Keys;
             public IEnumerable<TItem> Values => Items;
-#pragma warning disable CS8766 // 返回类型中引用类型的为 Null 性与隐式实现的成员不匹配(可能是由于为 Null 性特性)。
+#pragma warning disable CS8766 // 返回类型中引用类型的为 Null 性与隐式实现的成员不匹配(可能是由于为 Null 性特性).
             public TItem? this[Id key] => _dict.GetValueOrDefault(key);
-#pragma warning restore CS8766 // 返回类型中引用类型的为 Null 性与隐式实现的成员不匹配(可能是由于为 Null 性特性)。
+#pragma warning restore CS8766 // 返回类型中引用类型的为 Null 性与隐式实现的成员不匹配(可能是由于为 Null 性特性).
             public bool ContainsKey(Id key) => _dict.ContainsKey(key);
             public bool TryGetValue(Id key, out TItem value) => _dict.TryGetValue(key, out value);
             IEnumerator IEnumerable.GetEnumerator() => _dict.GetEnumerator();
